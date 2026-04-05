@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI HSE DSS - Safety Observation & Reporting</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI';
+  background:#0f172a;
+  color:white;
+}
+
+.header{
+  background:#020617;
+  padding:20px;
+  text-align:center;
+}
+
+.header h1{
+  margin:0;
+  color:#22c55e;
+}
+
+.tabs{
+  margin-top:10px;
+}
+
+.tabs a{
+  color:white;
+  text-decoration:none;
+  margin:0 10px;
+  font-weight:bold;
+}
+
+.tabs a.active{
+  color:#facc15;
+}
+
+.container{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:calc(100vh - 140px);
+}
+
+.card{
+  background:#1e293b;
+  padding:25px;
+  border-radius:15px;
+  width:400px;
+}
+
+input,textarea{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border:none;
+  border-radius:8px;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  background:#22c55e;
+  border:none;
+  border-radius:10px;
+  color:white;
+  cursor:pointer;
+}
+
+.popup{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+
+.popup-content{
+  background:#1e293b;
+  padding:25px;
+  border-radius:15px;
+  width:400px;
+  max-height:80vh;
+  overflow:auto;
+}
+
+.close{
+  float:right;
+  cursor:pointer;
+  color:red;
+  font-size:20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- 🔥 HEADER (موحد ومتظبط) -->
+<div class="header">
+  <h1>🤖 AI HSE Decision Support System</h1>
+
+  <div class="tabs">
+    <a href="/" class="active">📋 Safety Observation & Reporting</a> |
+    <a href="/dashboard">📊 Dashboard</a> |
+    <a href="/risk-assessment">⚠️ Risk Assessment</a> |
+    <a href="/investigation">🔍 Incident Investigation</a>
+  </div>
+</div>
+
+<!-- 🔥 CONTENT -->
+<div class="container">
+
+<div class="card">
+
+<h2>Safety Observation & Reporting</h2>
+
+<form id="form">
+
+<input type="text" name="name" placeholder="👤 Worker Name" required>
+<input type="text" name="emp" placeholder="🆔 Employee ID" required>
+
+<textarea name="description" placeholder="Describe the hazard... (optional if image)"></textarea>
+
+<input type="text" name="location" placeholder="📍 Location" required>
+
+<input type="file" name="image" accept="image/*">
+
+<button type="submit" id="submitBtn">Submit Report</button>
+
+</form>
+
+</div>
+
+</div>
+
+<!-- 🔥 POPUP -->
+<div class="popup" id="popup">
+  <div class="popup-content">
+    <span class="close" id="closeBtn">✖</span>
+    <div id="popupResult"></div>
+  </div>
+</div>
+
+<script>
+
+document.getElementById("form").onsubmit = async function(e){
+  e.preventDefault();
+
+  const button = document.getElementById("submitBtn");
+  button.innerText = "Analyzing...";
+  button.disabled = true;
+
+  let formData = new FormData(this);
+
+  try {
+
+    let res = await fetch("/submit",{
+      method:"POST",
+      body:formData
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    let data = await res.json();
+
+    console.log("Response data:", data); // للتحقق من البيانات
+
+    document.getElementById("popup").style.display = "flex";
+
+    document.getElementById("popupResult").innerHTML = `
+
+    <h3>🤖 AI Analysis</h3>
+
+    <div style="background:#022c22;padding:12px;border-radius:10px;margin-bottom:10px;">
+    ${data.message_ar ? data.message_ar : "شكراً لمشاركتك 👏"}
+    </div>
+
+    <div style="background:#1e293b;padding:12px;border-radius:10px;margin-bottom:10px;">
+    ${data.message_en ? data.message_en : "Thank you 👏"}
+    </div>
+
+    <hr>
+
+<b>📊 Hazard:</b> ${data.hazard || "General"}<br>
+<b>📌 Status:</b> Submitted<br>
+<b>⚠ Severity:</b> ${data.severity || "Not defined"}<br>
+<b>📈 Score:</b> ${data.risk_score || "0"}<br>
+<b>🏆 Points Awarded:</b> ${data.points_awarded || 10}<br><br>
+
+<b>🤖 Recommendation:</b><br>
+${data.recommendation || "No recommendation"}<br><br>
+
+<b>🧠 Why (AI Justification):</b><br>
+${data.justification ? data.justification : "AI analysis completed"}
+
+<hr>
+
+👤 ${formData.get("name")}<br>
+🆔 ${formData.get("emp")}
+
+    `;
+
+  } catch(err){
+    console.error(err);
+    alert("Server error ⚠");
+  }
+
+  button.innerText = "Submit Report";
+  button.disabled = false;
+};
+
+document.addEventListener("DOMContentLoaded", function(){
+
+  const closeBtn = document.getElementById("closeBtn");
+  const popup = document.getElementById("popup");
+
+  closeBtn.onclick = function(){
+    popup.style.display = "none";
+  };
+
+  popup.addEventListener("click", function(e){
+    if(e.target === popup){
+      popup.style.display = "none";
+    }
+  });
+
+});
+
+</script>
+
+</body>
+</html>

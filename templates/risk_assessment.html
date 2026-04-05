@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI HSE DSS - Risk Assessment</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI';
+  background:#0f172a;
+  color:white;
+}
+
+.container{padding:20px;}
+
+.card{
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  max-width:600px;
+  margin:20px auto;
+}
+
+textarea, input, select{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  background:#020617;
+  color:white;
+}
+
+button{
+  background:#22c55e;
+  color:white;
+  padding:10px 20px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  margin-top:10px;
+}
+
+button:hover{background:#16a34a;}
+
+.result{
+  margin-top:15px;
+  padding:10px;
+  background:#020617;
+  border-radius:8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- 🔥 HEADER (اتصلّح واتحط فوق) -->
+<div style="background:#020617;padding:20px;text-align:center;">
+
+  <h2 style="color:#22c55e;font-weight:bold;">
+    🤖 AI HSE Decision Support System
+  </h2>
+
+  <div style="margin-top:10px;">
+
+    <a href="/" style="margin:10px;color:white;text-decoration:none;">
+      📋 Safety Observation & Reporting 
+    </a>
+
+    <a href="/dashboard" style="margin:10px;color:white;text-decoration:none;">
+      📊 Dashboard
+    </a>
+
+    <a href="/risk-assessment" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
+      ⚠️ Risk Assessment
+    </a>
+
+    <a href="/investigation" style="margin:10px;color:white;text-decoration:none;">
+      🔍 Incident Investigation
+    </a>
+
+  </div>
+
+</div>
+
+<!-- 🔥 CONTENT -->
+<div class="container">
+
+<div class="card">
+  <h3>🤖 AI Risk Analysis</h3>
+
+<a href="{{ url_for('static', filename='risk_matrix.pdf') }}" 
+   target="_blank"
+   style="display:inline-block;margin-bottom:15px;color:#38bdf8;font-weight:bold;text-decoration:none;">
+   📄 View EGPC Risk Matrix
+</a>
+
+  <textarea id="aiHazard" placeholder="Describe hazard..."></textarea>
+
+  <button id="analyzeBtn">Analyze</button>
+
+  <div id="aiResult" class="result" style="display:none;"></div>
+
+  <div id="aiError" style="color:red; display:none;">
+    AI failed ⚠
+  </div>
+</div>
+
+</div>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const aiResult = document.getElementById("aiResult");
+  const aiError = document.getElementById("aiError");
+
+  analyzeBtn.addEventListener("click", async function(){
+
+    const hazard = document.getElementById("aiHazard").value.trim();
+
+    if(!hazard){
+      alert("Enter hazard");
+      return;
+    }
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerText = "Analyzing...";
+
+    aiError.style.display = "none";
+    aiResult.style.display = "block";
+    aiResult.innerHTML = "Analyzing...";
+
+    try{
+      const res = await fetch("/assess_risk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          description: hazard
+        })
+      });
+
+      const data = await res.json();
+
+      if(data.error){
+        aiError.style.display="block";
+        aiResult.style.display="none";
+        return;
+      }
+
+      aiResult.innerHTML = data.map(h => `
+<div style="margin-bottom:15px;padding:15px;border-radius:12px;background:#020617;border-left:6px solid ${h.color};">
+
+<b style="color:#38bdf8">Step:</b> ${h.step || "General Task"}<br><br>
+
+<b style="color:#f97316">Hazard:</b> ${h.hazard}<br><br>
+
+<b>Severity:</b> ${h.severity} | 
+<b>Probability:</b> ${h.probability}<br><br>
+
+<b style="color:${h.color}">Initial Risk:</b><br>
+Score: ${h.risk_score} | Level: ${h.risk_level}<br><br>
+
+<b style="color:#22c55e">Control Measures:</b><br>
+${h.recommendation}<br><br>
+
+<b style="color:#a78bfa">After Control:</b><br>
+Level: ${h.residual_level}
+
+</div>
+`).join("");
+
+    }catch(e){
+      console.log(e);
+      aiError.style.display="block";
+      aiResult.style.display="none";
+    }
+
+    analyzeBtn.disabled = false;
+    analyzeBtn.innerText = "Analyze";
+  });
+
+});
+
+</script>
+
+</body>
+</html>

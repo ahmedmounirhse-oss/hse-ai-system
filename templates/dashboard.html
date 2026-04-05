@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI HSE DSS - Dashboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
+.nav-tabs { border-bottom:none; gap:10px; }
+.nav-link { border:none !important; border-radius:10px !important; color:#64748b; padding:12px 25px; font-weight:600; }
+.nav-link.active { background:#3b82f6 !important; color:white !important; }
+.stat-card { border:none; border-radius:15px; padding:20px; color:white; }
+.content-card { background:white; border-radius:15px; padding:25px; }
+.alert-item { padding:12px; margin-bottom:10px; border-left:6px solid red; background:#fff; border-radius:8px; font-weight:500; }
+.root-cause-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 15px; }
+.heatmap-container { position: relative; height: 400px; }
+.prediction-card { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 15px; }
+.classification-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 15px; padding: 20px; margin-bottom: 15px; }
+</style>
+</head>
+
+<body>
+
+<div class="container-fluid px-4">
+<div style="background:#020617;padding:20px;text-align:center;">
+  <h1 style="margin:0;color:#22c55e;">
+    🤖 AI HSE Decision Support System
+  </h1>
+  <div style="margin-top:10px;">
+    <a href="/" style="color:white;margin:0 15px;text-decoration:none;">
+      📋 Safety Observation & Reporting
+    </a>
+    <a href="/dashboard" style="color:#facc15;font-weight:bold;margin:0 15px;text-decoration:none;">
+      📊 Dashboard
+    </a>
+    <a href="/risk-assessment" style="color:white;margin:0 15px;text-decoration:none;">
+      ⚠️ Risk Assessment
+    </a>
+    <a href="/investigation" style="color:white;margin:0 15px;text-decoration:none;">
+      🔍 Incident Investigation
+    </a>
+    <a href="/logout" style="float:right; color:red; font-weight:bold;">
+    🚪 Logout
+</a>
+  </div>
+</div>
+
+<!-- TABS -->
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overview">Overview</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#analytics">Analytics</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#predictions">Predictions</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#reports">Reports</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#leaderboard">Leaderboard</button>
+  </li>
+  <li class="nav-item">
+  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#management">
+    🧠 Management Decisions
+  </button>
+</li>
+</ul>
+
+<!-- CONTENT -->
+<div class="tab-content">
+
+<!-- ================= OVERVIEW ================= -->
+<div class="tab-pane fade show active" id="overview">
+
+<div class="row g-3 mb-4">
+<div class="col-md-2"><div class="stat-card" style="background:#3b82f6"><small>Total</small><h2 id="total">0</h2></div></div>
+<div class="col-md-2"><div class="stat-card" style="background:#ef4444"><small>High Risk</small><h2 id="high">0</h2></div></div>
+<div class="col-md-2"><div class="stat-card" style="background:#10b981"><small>Avg Score</small><h2 id="avg">0</h2></div></div>
+<div class="col-md-2"><div class="stat-card" style="background:#64748b"><small>Locations</small><h2 id="loc">0</h2></div></div>
+<div class="col-md-2"><div class="stat-card" style="background:#0ea5e9"><small>Observation</small><h2 id="obs">0</h2></div></div>
+<div class="col-md-2"><div class="stat-card" style="background:#facc15;color:black;"><small>Near Miss</small><h2 id="near">0</h2></div></div>
+<div class="col-md-2"><div class="stat-card" style="background:#dc2626"><small>Incident</small><h2 id="incident">0</h2></div></div>
+</div>
+
+<!-- Smart Alerts -->
+<div class="content-card mb-3">
+<h5>🚨 Smart Alerts</h5>
+<div id="alerts"></div>
+</div>
+
+</div>
+
+<!-- ================= ANALYTICS ================= -->
+<div class="tab-pane fade" id="analytics">
+
+<!-- Professional Root Cause Analysis -->
+<div class="content-card mb-3">
+<h5>🧠 Professional Root Cause Analysis</h5>
+<div id="root-cause-analysis"></div>
+</div>
+
+<!-- Heatmap -->
+<div class="content-card mb-3">
+<h5>📊 Risk Heatmap</h5>
+<div class="heatmap-container">
+<canvas id="heatmap"></canvas>
+</div>
+</div>
+
+<!-- Hazard Classification -->
+<div class="content-card mb-3">
+<h5>🏷️ Hazard Classification & Nature</h5>
+<div id="hazard-classification"></div>
+</div>
+
+</div>
+
+<!-- ================= PREDICTIONS ================= -->
+<div class="tab-pane fade" id="predictions">
+
+<!-- Prediction -->
+<div class="content-card mb-3">
+<h5>🔮 Predictive Analytics</h5>
+<div id="prediction"></div>
+</div>
+
+<!-- Hazard Distribution -->
+<div class="content-card">
+<h5>📈 Hazard Distribution</h5>
+<canvas id="chart1"></canvas>
+</div>
+
+</div>
+
+<!-- ================= REPORTS ================= -->
+<div class="tab-pane fade" id="reports">
+<div class="content-card">
+<table class="table table-hover">
+<thead>
+<tr>
+<th>Date</th><th>Location</th><th>Description</th><th>Hazard Class</th><th>Event</th><th>Severity</th><th>Root Cause</th><th>Recommendation</th>
+</tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+</div>
+</div>
+
+<!-- ================= LEADERBOARD ================= -->
+<div class="tab-pane fade" id="leaderboard">
+<div class="content-card text-center">
+<div id="leaderboard-list"></div>
+</div>
+</div>
+<!-- ================= MANAGEMENT DECISIONS ================= -->
+<div class="tab-pane fade" id="management">
+<div class="content-card">
+<h5>🧠 Management Decisions (ISO / OSHA / NFPA)</h5>
+<div id="management-decisions"></div>
+</div>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let chart, heatmapChart;
+
+async function load(){
+try {
+    let res = await fetch('/reports');
+    let data = await res.json();
+
+    // ================= KPI =================
+    let total = data.length;
+    let obs = data.filter(x => x.event === "Observation").length;
+    let near = data.filter(x => x.event === "Near Miss").length;
+    let incident = data.filter(x => x.event === "Incident").length;
+    let high = data.filter(x => (parseInt(x.risk_score)||0) >= 15).length;
+    let avg = total>0 ? Math.round(data.reduce((a,b)=>a+(parseInt(b.risk_score)||0),0)/total):0;
+    let loc = new Set(data.map(x => x.location)).size;
+
+    document.getElementById("total").innerText = total;
+    document.getElementById("obs").innerText = obs;
+    document.getElementById("near").innerText = near;
+    document.getElementById("incident").innerText = incident;
+    document.getElementById("high").innerText = high;
+    document.getElementById("avg").innerText = avg;
+    document.getElementById("loc").innerText = loc;
+
+    // ================= SMART ALERTS =================
+    let alertsEl = document.getElementById("alerts");
+    if(alertsEl){
+        let alerts = [];
+
+        // High Risk Alerts
+        data.forEach(r=>{
+            if(r.severity === "HIGH" || (parseInt(r.risk_score)||0)>=8){
+                alerts.push({
+                    type: 'critical',
+                    message: `🔥 CRITICAL RISK at ${r.location}: ${r.hazard_class} - Immediate intervention required`,
+                    priority: 1
+                });
+            }
+        });
+
+        // Near Miss Patterns
+        let nearByLocation = {};
+        data.forEach(r=>{
+            if(r.event === "Near Miss"){
+                let loc = r.location || "Unknown";
+                nearByLocation[loc] = (nearByLocation[loc]||0)+1;
+            }
+        });
+        Object.entries(nearByLocation).forEach(([loc,count])=>{
+            if(count >= 2){
+                alerts.push({
+                    type: 'warning',
+                    message: `⚠️ ${loc}: ${count} Near Miss incidents - Potential for major incident`,
+                    priority: 2
+                });
+            }
+        });
+
+        // Hazard Repetition
+        let hazardCount = {};
+        data.forEach(r=>{
+            let h = r.hazard_class || "General";
+            hazardCount[h] = (hazardCount[h]||0)+1;
+        });
+        Object.entries(hazardCount).forEach(([h,count])=>{
+            if(count >= 3){
+                alerts.push({
+                    type: 'info',
+                    message: `📊 ${h}: ${count} occurrences - Training and procedure review needed`,
+                    priority: 3
+                });
+            }
+        });
+
+        // Location Risk Hotspots
+        let riskByLocation = {};
+        data.forEach(r=>{
+            let loc = r.location || "Unknown";
+            riskByLocation[loc] = (riskByLocation[loc]||0)+(parseInt(r.risk_score)||0);
+        });
+        Object.entries(riskByLocation).forEach(([loc,total])=>{
+            if(total >= 20){
+                alerts.push({
+                    type: 'danger',
+                    message: `🚨 ${loc}: High cumulative risk score (${total}) - Safety audit required`,
+                    priority: 1
+                });
+            }
+        });
+
+        // Sort by priority
+        alerts.sort((a,b)=>a.priority - b.priority);
+
+        if(alerts.length === 0){
+            alertsEl.innerHTML = "<div class='alert alert-success'>✅ No critical alerts at this time</div>";
+        } else {
+            alertsEl.innerHTML = alerts.map(a=>{
+                let color = a.type === 'critical' ? '#dc3545' : a.type === 'warning' ? '#ffc107' : a.type === 'danger' ? '#fd7e14' : '#17a2b8';
+                return `
+                <div class="alert-item" style="border-left-color: ${color};">
+                    ${a.message}
+                </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // ================= PROFESSIONAL ROOT CAUSE ANALYSIS =================
+    let rootCauseEl = document.getElementById("root-cause-analysis");
+    if(rootCauseEl){
+        let rootCauses = {};
+        data.forEach(r=>{
+            let rc = r.root_cause || "Unspecified";
+            rootCauses[rc] = (rootCauses[rc]||0)+1;
+        });
+
+        let totalIncidents = data.length;
+        let rootCauseHtml = Object.entries(rootCauses)
+            .sort((a,b)=>b[1]-a[1])
+            .map(([cause, count])=>{
+                let percentage = ((count / totalIncidents) * 100).toFixed(1);
+                let severity = count >= 5 ? 'high' : count >= 3 ? 'medium' : 'low';
+                let color = severity === 'high' ? '#dc3545' : severity === 'medium' ? '#ffc107' : '#28a745';
+                return `
+                <div class="root-cause-card">
+                    <h6>${cause}</h6>
+                    <p>Occurrences: ${count} (${percentage}%)</p>
+                    <div style="background: rgba(255,255,255,0.2); height: 10px; border-radius: 5px;">
+                        <div style="width: ${percentage}%; background: ${color}; height: 100%; border-radius: 5px;"></div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+        rootCauseEl.innerHTML = rootCauseHtml || "<p>No root cause data available</p>";
+    }
+
+    // ================= HEATMAP =================
+    let heatmapEl = document.getElementById("heatmap");
+    if(heatmapEl){
+        let locationData = {};
+        data.forEach(r=>{
+            let loc = r.location || "Unknown";
+            if(!locationData[loc]){
+                locationData[loc] = {totalRisk: 0, count: 0, incidents: 0, nearMiss: 0};
+            }
+            locationData[loc].totalRisk += parseInt(r.risk_score)||0;
+            locationData[loc].count += 1;
+            if(r.event === "Incident") locationData[loc].incidents += 1;
+            if(r.event === "Near Miss") locationData[loc].nearMiss += 1;
+        });
+
+        let locations = Object.keys(locationData);
+        let avgRisks = locations.map(loc => locationData[loc].totalRisk / locationData[loc].count);
+        let counts = locations.map(loc => locationData[loc].count);
+
+        if(heatmapChart) heatmapChart.destroy();
+
+        heatmapChart = new Chart(heatmapEl, {
+            type: 'bar',
+            data: {
+                labels: locations,
+                datasets: [{
+                    label: 'Average Risk Score',
+                    data: avgRisks,
+                    backgroundColor: avgRisks.map(risk => {
+                        if(risk >= 8) return 'rgba(220, 53, 69, 0.8)'; // Red for high
+                        if(risk >= 5) return 'rgba(255, 193, 7, 0.8)'; // Yellow for medium
+                        return 'rgba(40, 167, 69, 0.8)'; // Green for low
+                    }),
+                    borderColor: avgRisks.map(risk => {
+                        if(risk >= 8) return 'rgba(220, 53, 69, 1)';
+                        if(risk >= 5) return 'rgba(255, 193, 7, 1)';
+                        return 'rgba(40, 167, 69, 1)';
+                    }),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Risk Heatmap by Location (Average Risk Score)',
+                        font: { size: 16 }
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                let index = context.dataIndex;
+                                let loc = locations[index];
+                                let data = locationData[loc];
+                                return [
+                                    `Location: ${loc}`,
+                                    `Average Risk: ${avgRisks[index].toFixed(1)}`,
+                                    `Total Incidents: ${data.count}`,
+                                    `Incidents: ${data.incidents}`,
+                                    `Near Miss: ${data.nearMiss}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Average Risk Score'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Locations'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Add legend explanation
+        let legendHtml = `
+        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+            <strong>Color Legend:</strong>
+            <span style="color: #dc3545;">🔴 High Risk (≥8)</span> |
+            <span style="color: #ffc107;">🟡 Medium Risk (5-7)</span> |
+            <span style="color: #28a745;">🟢 Low Risk (<5)</span>
+        </div>
+        `;
+        heatmapEl.parentNode.insertAdjacentHTML('afterend', legendHtml);
+    }
+
+    // ================= PREDICTIVE ANALYTICS =================
+    let predictionEl = document.getElementById("prediction");
+    if(predictionEl){
+        let locationStats = {};
+        data.forEach(r=>{
+            let loc = r.location || "Unknown";
+            if(!locationStats[loc]){
+                locationStats[loc] = {incidents: 0, near: 0, risk: 0, total: 0, hazards: {}};
+            }
+            locationStats[loc].total += 1;
+            locationStats[loc].risk += parseInt(r.risk_score)||0;
+            if(r.event === "Incident") locationStats[loc].incidents += 1;
+            if(r.event === "Near Miss") locationStats[loc].near += 1;
+            let h = r.hazard_class || "General";
+            locationStats[loc].hazards[h] = (locationStats[loc].hazards[h]||0)+1;
+        });
+
+        // Calculate risk scores
+        let predictions = Object.entries(locationStats).map(([loc, s])=>{
+            let score = (s.incidents * 5) + (s.near * 3) + (s.risk * 0.5) + (s.total * 1);
+            let trend = s.near > s.incidents ? 'increasing' : 'stable';
+            let nextHazard = Object.keys(s.hazards).reduce((a,b)=>s.hazards[a]>s.hazards[b]?a:b, "General");
+            return {loc, score, trend, nextHazard, ...s};
+        }).sort((a,b)=>b.score - a.score);
+
+        if(predictions.length > 0){
+            let top = predictions[0];
+            predictionEl.innerHTML = `
+            <div class="prediction-card">
+                <h6>🔮 High Risk Prediction</h6>
+                <p><strong>Location:</strong> ${top.loc}</p>
+                <p><strong>Risk Score:</strong> ${top.score.toFixed(1)}</p>
+                <p><strong>Trend:</strong> ${top.trend === 'increasing' ? '🔴 Increasing' : '🟡 Stable'}</p>
+                <p><strong>Predicted Next Hazard:</strong> ${top.nextHazard}</p>
+                <p><strong>Recommendation:</strong> Immediate safety inspection and preventive measures</p>
+            </div>
+            `;
+        } else {
+            predictionEl.innerHTML = "<p>No prediction data available</p>";
+        }
+    }
+
+    // ================= HAZARD CLASSIFICATION =================
+    let classificationEl = document.getElementById("hazard-classification");
+    if(classificationEl){
+        let hazardTypes = {};
+        data.forEach(r=>{
+            let h = r.hazard_class || "General";
+            if(!hazardTypes[h]){
+                hazardTypes[h] = {count: 0, severity: [], nature: classifyHazardNature(h)};
+            }
+            hazardTypes[h].count += 1;
+            hazardTypes[h].severity.push(r.severity);
+        });
+
+        let classificationHtml = Object.entries(hazardTypes).map(([hazard, info])=>{
+            let avgSeverity = info.severity.filter(s=>s).length > 0 ?
+                info.severity.filter(s=>s==='HIGH').length / info.severity.length : 0;
+            let severityColor = avgSeverity > 0.5 ? '#dc3545' : avgSeverity > 0.2 ? '#ffc107' : '#28a745';
+            return `
+            <div class="classification-card">
+                <h6>${hazard}</h6>
+                <p><strong>Occurrences:</strong> ${info.count}</p>
+                <p><strong>Nature:</strong> ${info.nature}</p>
+                <p><strong>Average Severity:</strong> <span style="color: ${severityColor};">${(avgSeverity*100).toFixed(1)}%</span></p>
+            </div>
+            `;
+        }).join('');
+
+        classificationEl.innerHTML = classificationHtml || "<p>No classification data available</p>";
+    }
+
+    // ================= CHART =================
+    let map = {};
+    data.forEach(r=>{
+        let h = r.hazard_class || "General";
+        map[h] = (map[h]||0)+1;
+    });
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart1"), {
+        type:'bar',
+        data:{
+            labels:Object.keys(map),
+            datasets:[{data:Object.values(map), backgroundColor: '#3b82f6'}]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Hazard Distribution'
+                }
+            }
+        }
+    });
+
+    // ================= TABLE =================
+    let table = document.getElementById("table");
+    if(table){
+        table.innerHTML = data.map(r => `
+            <tr>
+                <td>${r.date}</td>
+                <td>${r.location}</td>
+                <td>${r.description || "-"}</td>
+                <td>${r.hazard_class}</td>
+                <td>${r.event}</td>
+                <td>${r.severity}</td>
+                <td>${r.root_cause || "Not analyzed"}</td>
+                <td style="font-size:12px; line-height:1.6">${r.recommendation}</td>
+            </tr>
+        `).join('');
+    }
+
+    // ================= LEADERBOARD =================
+    let lb = await fetch('/leaderboard');
+    let users = await lb.json();
+
+    let lbEl = document.getElementById("leaderboard-list");
+    if(lbEl){
+        lbEl.innerHTML = users.map((u,i)=>`
+            <div class="d-flex justify-content-between p-2 border-bottom">
+                <span>${i+1}. ${u.name}</span>
+                <span>${u.points}</span>
+            </div>
+        `).join('');
+    }
+
+} catch(e) {
+    console.error("LOAD ERROR:", e);
+}
+}
+
+function classifyHazardNature(hazard) {
+    hazard = hazard.toLowerCase();
+    if(hazard.includes('fire') || hazard.includes('explosion')) return 'Thermal/Energy Release';
+    if(hazard.includes('chemical') || hazard.includes('toxic')) return 'Chemical Exposure';
+    if(hazard.includes('electrical') || hazard.includes('shock')) return 'Electrical';
+    if(hazard.includes('mechanical') || hazard.includes('equipment')) return 'Mechanical';
+    if(hazard.includes('height') || hazard.includes('fall')) return 'Physical/Fall';
+    if(hazard.includes('behavioral') || hazard.includes('ppe')) return 'Human Factors';
+    return 'General Safety';
+}
+
+document.addEventListener("DOMContentLoaded", load);
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function (event) {
+        if (event.target.getAttribute("data-bs-target") === "#management") {
+            loadManagementDecisions();
+        }
+    });
+});
+// ================= MANAGEMENT DECISIONS =================
+async function loadManagementDecisions() {
+    try {
+        let res = await fetch('/decision-engine');
+        let data = await res.json();
+
+        let container = document.getElementById("management-decisions");
+
+        if (!data.management_decisions || data.management_decisions.length === 0) {
+            container.innerHTML = "<div class='alert alert-info'>No management decisions available</div>";
+            return;
+        }
+
+        container.innerHTML = data.management_decisions.map(d => `
+            <div class="alert-item" style="border-left-color:#0ea5e9;">
+                ${d}
+            </div>
+        `).join('');
+
+    } catch(e) {
+        console.error("Decision Load Error:", e);
+    }
+}
+</script>
+
+</body>
+</html>
