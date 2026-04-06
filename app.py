@@ -97,7 +97,7 @@ else:
         client = None
 # ---------------- ADD POINTS ----------------
 def add_points(emp_id, name, pts):
-    conn = sqlite3.connect('hse.db')
+    conn = sqlite3.connect('hse.db', timeout=10)
     c = conn.cursor()
 
     c.execute("SELECT emp_id, name, points FROM users WHERE emp_id=?", (emp_id,))
@@ -617,7 +617,7 @@ def investigation():
 @app.route('/generate_pdf')
 def generate_pdf():
 
-    conn = sqlite3.connect('hse.db')
+    conn = sqlite3.connect('hse.db', timeout=10)
     c = conn.cursor()
 
     c.execute("SELECT description, location, severity, risk_score FROM reports")
@@ -699,7 +699,7 @@ def reports():
     try:
         company_name = request.args.get("company") or "default"
 
-        conn = sqlite3.connect('hse.db')
+        conn = sqlite3.connect('hse.db', timeout=10)
         c = conn.cursor()
 
         # get company id
@@ -743,6 +743,68 @@ def reports():
     except Exception as e:
         print("REPORT ERROR:", e)
         return jsonify([])
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+
+    username = data.get("username")
+    password = data.get("password")
+    company = data.get("company")
+
+    conn = sqlite3.connect('hse.db', timeout=10)
+    c = conn.cursor()
+
+    # create or get company
+    c.execute("SELECT id FROM companies WHERE name=?", (company,))
+    comp = c.fetchone()
+
+    if not comp:
+        c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+        conn.commit()
+        company_id = c.lastrowid
+    else:
+        company_id = comp[0]
+
+    try:
+        c.execute("INSERT INTO users (username, password, company_id) VALUES (?, ?, ?)",
+                  (username, password, company_id))
+        conn.commit()
+    except:
+        return jsonify({"error": "User exists"}), 400
+
+    conn.close()
+    return jsonify({"message": "Registered successfully"})
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+
+    username = data.get("username")
+    password = data.get("password")
+
+    conn = sqlite3.connect('hse.db', timeout=10)
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT users.id, users.company_id, companies.name
+    FROM users
+    JOIN companies ON users.company_id = companies.id
+    WHERE username=? AND password=?
+    """, (username, password))
+
+    user = c.fetchone()
+    conn.close()
+
+    if not user:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    return jsonify({
+        "message": "Login success",
+        "user_id": user[0],
+        "company_id": user[1],
+        "company": user[2]
+    })
 
 @app.route('/assess_risk', methods=['POST'])
 def assess_risk():
@@ -860,7 +922,7 @@ def submit():
         )
 
         # ================= DB =================
-        conn = sqlite3.connect('hse.db')
+        conn = sqlite3.connect('hse.db', timeout=10)
         c = conn.cursor()
 
         # 🔥 COMPANY GET / CREATE
@@ -894,6 +956,7 @@ def submit():
         ))
 
         conn.commit()
+        c.close()
         conn.close()
 
         add_points(emp_id, name, 10)
@@ -959,7 +1022,7 @@ def decision_engine():
     """Get strategic decisions and recommendations"""
     print("=== DECISION ENGINE ROUTE HIT ===")
     try:
-        conn = sqlite3.connect('hse.db')
+        conn = sqlite3.connect('hse.db', timeout=10)
         c = conn.cursor()
         
         # Get all reports
@@ -1094,7 +1157,7 @@ def decision_engine():
 @app.route('/leaderboard')
 def leaderboard():
     try:
-        conn = sqlite3.connect('hse.db')
+        conn = sqlite3.connect('hse.db', timeout=10)
         c = conn.cursor()
 
         # ❌ امسح sample data نهائي
