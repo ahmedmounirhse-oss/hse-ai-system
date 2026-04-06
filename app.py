@@ -283,189 +283,27 @@ Return STRICT JSON:
 
         txt = res.choices[0].message.content.strip()
 
+        # 🔥 حماية لو الرد فاضي
+        if not txt:
+            print("AI EMPTY RESPONSE")
+            return None
+
+        # تنظيف code block
         if "```" in txt:
             txt = txt.replace("```json", "").replace("```", "").strip()
+
+        # 🔥 استخراج JSON حتى لو فيه كلام زيادة
+        import re
+        match = re.search(r'\{.*\}', txt, re.DOTALL)
+        if match:
+            txt = match.group()
 
         return json.loads(txt)
 
     except Exception as e:
-        print("AI ERROR:", e)
+        print("AI PARSE ERROR:", txt)
+        print("ERROR:", e)
         return None
-    
-def analyze_with_gpt(desc):
-    try:
-        prompt = f"""
-You are an HSE expert in oil & gas (EGPC standard).
-
-Break the job into steps and identify hazards for each step.
-
-Return JSON array like:
-
-[
-{{
-"step": "task step",
-"hazard": "hazard description",
-"severity": 1-6,
-"probability": 1-6,
-"recommendation": "control measures"
-}}
-]
-
-Rules:
-Severity:
-6 = Disastrous
-5 = Catastrophic
-4 = Major
-3 = Serious
-2 = Minor
-1 = Notable
-
-Probability:
-1 = Rare
-2 = Unlikely
-3 = Possible
-4 = Likely
-5 = Very Likely
-6 = Almost Certain
-
-Return ONLY JSON.
-"""
-
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt + "\n\nJob: " + desc}]
-        )
-
-        txt = res.choices[0].message.content.strip()
-
-        if "```" in txt:
-            txt = txt.replace("```json", "").replace("```", "").strip()
-
-        data = json.loads(txt)
-
-        clean_data = []
-
-        # EGPC Mapping
-        severity_map = {
-            6: "A",
-            5: "B",
-            4: "C",
-            3: "D",
-            2: "E",
-            1: "F"
-        }
-
-        for h in data:
-            try:
-                hazard_text = h.get("hazard", "").lower()
-                step = h.get("step", "General Task")
-
-                severity_num = int(h.get("severity", 3))
-                probability = int(h.get("probability", 3))
-
-                # VALIDATION
-                severity_num = max(1, min(6, severity_num))
-                probability = max(1, min(6, probability))
-
-                # ENGINEERING OVERRIDE
-                if "height" in hazard_text or "fall" in hazard_text:
-                    severity_num = max(severity_num, 5)
-
-                if "fire" in hazard_text or "explosion" in hazard_text:
-                    severity_num = 6
-
-                if "confined" in hazard_text:
-                    severity_num = 6
-
-                if "chemical" in hazard_text:
-                    severity_num = max(severity_num, 4)
-
-                if "lifting" in hazard_text or "crane" in hazard_text:
-                    severity_num = max(severity_num, 4)
-
-                # PROBABILITY ADJUSTMENT
-                desc_lower = desc.lower()
-
-                if "routine" in desc_lower:
-                    probability = max(probability, 4)
-
-                if "manual" in desc_lower:
-                    probability = max(probability, 3)
-
-                if "non routine" in desc_lower or "shutdown" in desc_lower:
-                    probability = max(probability, 4)
-
-                # INITIAL RISK
-                severity_letter = severity_map[severity_num]
-                risk_code = f"{severity_letter}{probability}"
-                score = severity_num * probability
-
-                if score >= 15:
-                    level = "High"
-                    color = "#ff3b3b"
-                elif score >= 8:
-                    level = "Medium"
-                    color = "#ffc107"
-                else:
-                    level = "Low"
-                    color = "#28a745"
-
-                # AFTER CONTROLS
-                control_strength = 1
-                rec = h.get("recommendation", "").lower()
-
-                if "permit" in rec or "procedure" in rec:
-                    control_strength += 1
-
-                if "training" in rec or "ppe" in rec:
-                    control_strength += 1
-
-                if "isolation" in rec or "gas test" in rec:
-                    control_strength += 2
-
-                residual_probability = max(1, probability - control_strength)
-                residual_score = severity_num * residual_probability
-
-                if residual_score >= 15:
-                    residual_level = "High"
-                elif residual_score >= 8:
-                    residual_level = "Medium"
-                else:
-                    residual_level = "Low"
-
-                residual_code = f"{severity_map[severity_num]}{residual_probability}"
-
-                # FINAL OUTPUT
-                clean_data.append({
-                    "step": step,
-                    "hazard": h.get("hazard", "Unknown"),
-
-                    # BEFORE
-                    "severity": severity_letter,
-                    "probability": probability,
-                    "risk_code": risk_code,
-                    "risk_score": score,
-                    "risk_level": level,
-                    "color": color,
-
-                    # AFTER
-                    "residual_probability": residual_probability,
-                    "residual_code": residual_code,
-                    "residual_score": residual_score,
-                    "residual_level": residual_level,
-
-                    "recommendation": h.get("recommendation", "No recommendation")
-                })
-
-            except Exception as row_e:
-                print("Row error:", row_e)
-
-        return clean_data
-
-    except Exception as e:
-        print("🔥 GPT ERROR:", e)
-        return []
-    
   # ================= AI INTELLIGENCE =================
 
 def compute_root_cause(desc):
@@ -822,18 +660,21 @@ def assess_risk():
     except Exception as e:
         return jsonify({"error": "AI failed"}), 500
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get("username")
-        password = request.form.get("password")
+@app.route('/admin-login', methods=['POST'])
+def admin_login():
+    username = request.form.get("username")
+    password = request.form.get("password")
 
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin'] = True
-            return redirect('/dashboard')
-        else:
-            return "❌ Wrong credentials"
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session['admin'] = True
+        return redirect('/dashboard')
+    else:
+        return "❌ Wrong credentials"
 
+    return render_template("login.html")
+
+@app.route('/login', methods=['GET'])
+def login_page():
     return render_template("login.html")
 
 @app.route('/logout')
