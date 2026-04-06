@@ -18,7 +18,11 @@ from ai_engine import validate_classification, map_severity
 from risk_calc import calculate_risk
 import json
 import base64
+import sqlite3
 
+
+def get_db():
+    return sqlite3.connect('hse.db', timeout=10)
 print("App starting...")
 
 # ✅ تأكد إن الفولدر موجود مرة واحدة بس
@@ -614,35 +618,6 @@ def register():
     conn.close()
     return jsonify({"message": "Registered successfully"})
 
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-
-    username = data.get("username")
-    password = data.get("password")
-
-    conn = sqlite3.connect('hse.db', timeout=10)
-    c = conn.cursor()
-
-    c.execute("""
-    SELECT users.id, users.company_id, companies.name
-    FROM users
-    JOIN companies ON users.company_id = companies.id
-    WHERE username=? AND password=?
-    """, (username, password))
-
-    user = c.fetchone()
-    conn.close()
-
-    if not user:
-        return jsonify({"error": "Invalid credentials"}), 401
-
-    return jsonify({
-        "message": "Login success",
-        "user_id": user[0],
-        "company_id": user[1],
-        "company": user[2]
-    })
 
 @app.route('/assess_risk', methods=['POST'])
 def assess_risk():
@@ -660,21 +635,18 @@ def assess_risk():
     except Exception as e:
         return jsonify({"error": "AI failed"}), 500
 
-@app.route('/admin-login', methods=['POST'])
-def admin_login():
-    username = request.form.get("username")
-    password = request.form.get("password")
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get("username")
+        password = request.form.get("password")
 
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        session['admin'] = True
-        return redirect('/dashboard')
-    else:
-        return "❌ Wrong credentials"
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin'] = True
+            return redirect('/dashboard')
+        else:
+            return "❌ Wrong credentials"
 
-    return render_template("login.html")
-
-@app.route('/login', methods=['GET'])
-def login_page():
     return render_template("login.html")
 
 @app.route('/logout')
