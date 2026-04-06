@@ -8,38 +8,14 @@
 
 <h2>🔐 Login</h2>
 
-<input id="user" placeholder="Username"><br><br>
-<input id="pass" type="password" placeholder="Password"><br><br>
+<form method="POST" action="/login">
 
-<button onclick="login()">Login</button>
+    <input name="username" placeholder="Username"><br><br>
+    <input name="password" type="password" placeholder="Password"><br><br>
 
-<script>
-async function login(){
+    <button type="submit">Login</button>
 
-    let res = await fetch("/login",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-            username: document.getElementById("user").value,
-            password: document.getElementById("pass").value
-        })
-    });
-
-    let data = await res.json();
-
-    console.log(data);
-
-    if(data.company){
-        // 🔥 مهم جدًا
-        localStorage.setItem("company", data.company);
-
-        // 👇 يفتح الداشبورد
-        window.location = "/dashboard";
-    } else {
-        alert("Login failed ❌");
-    }
-}
-</script>
+</form>
 
 </body>
 </html>

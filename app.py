@@ -100,33 +100,38 @@ else:
         print(f"❌ OpenAI client init failed: {e}")
         client = None
 # ---------------- ADD POINTS ----------------
-def add_points(emp_id, name, pts):
-    conn = sqlite3.connect('hse.db', timeout=10)
-    c = conn.cursor()
+def add_points(emp_id, name, points):
+    try:
+        conn = sqlite3.connect('hse.db', timeout=10)
+        c = conn.cursor()
 
-    c.execute("SELECT emp_id, name, points FROM users WHERE emp_id=?", (emp_id,))
-    user = c.fetchone()
+        # تأكد إن المستخدم موجود
+        c.execute("SELECT emp_id FROM users WHERE emp_id=?", (emp_id,))
+        user = c.fetchone()
 
-    # 🔥 تأكد إن الاسم مش فاضي
-    name = name.strip() if name else "Unknown"
-
-    if user:
-        # ✅ تحديث الاسم والنقاط
-        c.execute("""
-            UPDATE users 
-            SET points = points + ?, name = ?
-            WHERE emp_id = ?
-        """, (pts, name, emp_id))
-    else:
-        # ✅ إضافة مستخدم جديد
-        c.execute("""
-            INSERT INTO users (emp_id, name, points) 
+        if not user:
+            c.execute("""
+            INSERT INTO users (emp_id, name, points)
             VALUES (?, ?, ?)
-        """, (emp_id, name, pts))
+            """, (emp_id, name, points))
+        else:
+            c.execute("""
+            UPDATE users 
+            SET points = COALESCE(points,0) + ?
+            WHERE emp_id=?
+            """, (points, emp_id))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
+    except Exception as e:
+        print("POINTS ERROR:", e)
+
+    finally:
+        try:
+            c.close()
+            conn.close()
+        except:
+            pass
 # ---------------- UTIL ----------------
 def normalize_ai_response(ai):
     default = {
@@ -638,8 +643,12 @@ def assess_risk():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get("username")
-        password = request.form.get("password")
+        data = request.get_json()
+
+        data = request.get_json()
+
+        username = data.get("username")
+        password = data.get("password")
 
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['admin'] = True
@@ -667,7 +676,7 @@ def submit():
         loc = request.form.get('location')
         emp_id = request.form.get('emp')
         name = request.form.get('name')
-        company_name = request.form.get("company") or "default"
+        company_name = "wotech"
 
         if not loc or not emp_id or not name:
             return jsonify({"error": "Missing data"}), 400
@@ -734,43 +743,52 @@ def submit():
             "<br><br>🟢 Preventive:<br>" + "<br>".join(preventive)
         )
 
-        # ================= DB =================
-        conn = sqlite3.connect('hse.db', timeout=10)
-        c = conn.cursor()
+        # ================= DB (FIXED) =================
+        try:
+            conn = sqlite3.connect('hse.db', timeout=10)
+            c = conn.cursor()
 
-        # 🔥 COMPANY GET / CREATE
-        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
-        company = c.fetchone()
+            # COMPANY
+            c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
+            company = c.fetchone()
 
-        if company:
-            company_id = company[0]
-        else:
-            c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
+            if company:
+                company_id = company[0]
+            else:
+                c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
+                conn.commit()
+                company_id = c.lastrowid
+
+            # INSERT
+            c.execute("""
+            INSERT INTO reports 
+            (description, location, type, event, severity, risk_score, recommendation, emp_id, date, image, company_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                desc,
+                loc,
+                hazard,
+                report_type,
+                severity,
+                risk_score,
+                recommendation,
+                emp_id,
+                datetime.now().strftime("%Y-%m-%d"),
+                image_path,
+                company_id
+            ))
+
             conn.commit()
-            company_id = c.lastrowid
 
-        # 🔥 INSERT WITH COMPANY_ID
-        c.execute("""
-        INSERT INTO reports 
-        (description, location, type, event, severity, risk_score, recommendation, emp_id, date, image, company_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            desc,
-            loc,
-            hazard,
-            report_type,
-            severity,
-            risk_score,
-            recommendation,
-            emp_id,
-            datetime.now().strftime("%Y-%m-%d"),
-            image_path,
-            company_id
-        ))
+        except Exception as db_err:
+            print("DB ERROR:", db_err)
 
-        conn.commit()
-        c.close()
-        conn.close()
+        finally:
+            try:
+                c.close()
+                conn.close()
+            except:
+                pass
 
         add_points(emp_id, name, 10)
 
