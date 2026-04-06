@@ -176,8 +176,10 @@ let chart, heatmapChart;
 
 async function load(){
 try {
-    let res = await fetch('/reports');
-    let data = await res.json();
+    let company = localStorage.getItem("company") || "default";
+
+let res = await fetch(`/reports?company=${company}`);
+let data = await res.json();
 
     // ================= KPI =================
     let total = data.length;

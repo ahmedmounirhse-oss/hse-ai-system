@@ -134,6 +134,8 @@ button{
 
 <input type="file" name="image" accept="image/*">
 
+<input type="text" name="company" placeholder="🏢 Company Name" required>
+
 <button type="submit" id="submitBtn">Submit Report</button>
 
 </form>
@@ -161,6 +163,10 @@ document.getElementById("form").onsubmit = async function(e){
 
   let formData = new FormData(this);
 
+  // 🔥 خزّن اسم الشركة
+  let company = formData.get("company") || "default";
+  localStorage.setItem("company", company);
+
   try {
 
     let res = await fetch("/submit",{
@@ -174,7 +180,7 @@ document.getElementById("form").onsubmit = async function(e){
 
     let data = await res.json();
 
-    console.log("Response data:", data); // للتحقق من البيانات
+    console.log("Response data:", data);
 
     document.getElementById("popup").style.display = "flex";
 

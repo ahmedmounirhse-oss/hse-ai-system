@@ -697,13 +697,28 @@ def investigation_pdf():
 @app.route('/reports')
 def reports():
     try:
+        company_name = request.args.get("company") or "default"
+
         conn = sqlite3.connect('hse.db')
         c = conn.cursor()
 
+        # get company id
+        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
+        company = c.fetchone()
+
+        if not company:
+            conn.close()   # 🔥 FIX مهم
+            return jsonify([])
+
+        company_id = company[0]
+
+        # 🔥 FILTER DATA BY COMPANY
         c.execute("""
-        SELECT description, location, type, event, severity, risk_score, recommendation, date, image 
+        SELECT description, location, type, event, severity, risk_score, recommendation, date, image
         FROM reports
-        """)
+        WHERE company_id=?
+        ORDER BY date DESC
+        """, (company_id,))
 
         rows = c.fetchall()
         conn.close()
@@ -720,13 +735,13 @@ def reports():
                 "recommendation": r[6],
                 "date": r[7],
                 "image": r[8],
-                "root_cause": compute_root_cause(r[0])
+                "root_cause": compute_root_cause(r[0]) if r[0] else ""  # 🔥 FIX
             })
 
         return jsonify(result)
 
     except Exception as e:
-        print("Error in /reports:", e)
+        print("REPORT ERROR:", e)
         return jsonify([])
 
 @app.route('/assess_risk', methods=['POST'])
@@ -777,6 +792,7 @@ def submit():
         loc = request.form.get('location')
         emp_id = request.form.get('emp')
         name = request.form.get('name')
+        company_name = request.form.get("company") or "default"
 
         if not loc or not emp_id or not name:
             return jsonify({"error": "Missing data"}), 400
@@ -822,7 +838,7 @@ def submit():
             hazard = ai.get("hazard_category", "General")
             report_type = validate_classification(desc, ai.get("report_type"))
             severity_num = map_severity(ai.get("severity", "MEDIUM"))
-            likelihood = 3  # default or later AI
+            likelihood = 3
             risk_score, risk_level = calculate_risk(severity_num, likelihood)
             severity = risk_level.upper()
 
@@ -847,10 +863,22 @@ def submit():
         conn = sqlite3.connect('hse.db')
         c = conn.cursor()
 
+        # 🔥 COMPANY GET / CREATE
+        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
+        company = c.fetchone()
+
+        if company:
+            company_id = company[0]
+        else:
+            c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
+            conn.commit()
+            company_id = c.lastrowid
+
+        # 🔥 INSERT WITH COMPANY_ID
         c.execute("""
         INSERT INTO reports 
-        (description, location, type, event, severity, risk_score, recommendation, emp_id, date, image)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (description, location, type, event, severity, risk_score, recommendation, emp_id, date, image, company_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             desc,
             loc,
@@ -861,11 +889,13 @@ def submit():
             recommendation,
             emp_id,
             datetime.now().strftime("%Y-%m-%d"),
-            image_path
+            image_path,
+            company_id
         ))
 
         conn.commit()
         conn.close()
+
         add_points(emp_id, name, 10)
 
         # ================= RESPONSE =================
@@ -1095,5 +1125,11 @@ def leaderboard():
         return jsonify([])
 # ================== RUN ==================
 
+import os
+
 if __name__ == '__main__':
-   app.run(debug=True, use_reloader=False)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
+    )
