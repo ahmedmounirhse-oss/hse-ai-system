@@ -8,19 +8,41 @@
 body{
   margin:0;
   font-family:'Segoe UI';
-  background:#0f172a;
+  background: linear-gradient(135deg, #0f4c3a 0%, #1a5c4a 50%, #0d3a2e 100%);
+  background-attachment: fixed;
   color:white;
+  position: relative;
+}
+
+/* HSE Safety/Health Pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .header{
-  background:#020617;
+  background: linear-gradient(90deg, #065f46 0%, #047857 50%, #059669 100%);
   padding:20px;
   text-align:center;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .header h1{
   margin:0;
-  color:#22c55e;
+  color:#4ade80;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .tabs{
@@ -32,10 +54,18 @@ body{
   text-decoration:none;
   margin:0 10px;
   font-weight:bold;
+  transition: all 0.3s ease;
+}
+
+.tabs a:hover {
+  color: #4ade80;
+  transform: scale(1.05);
 }
 
 .tabs a.active{
   color:#facc15;
+  border-bottom: 2px solid #facc15;
+  padding-bottom: 5px;
 }
 
 .container{
@@ -43,13 +73,18 @@ body{
   justify-content:center;
   align-items:center;
   min-height:calc(100vh - 140px);
+  position: relative;
+  z-index: 1;
 }
 
 .card{
-  background:#1e293b;
+  background: linear-gradient(135deg, #1a5c4a 0%, #0f4c3a 100%);
+  background-attachment: fixed;
   padding:25px;
   border-radius:15px;
   width:400px;
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 input,textarea{
@@ -58,16 +93,30 @@ input,textarea{
   margin:8px 0;
   border:none;
   border-radius:8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f4c3a;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
 }
 
 button{
   width:100%;
   padding:12px;
-  background:#22c55e;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
   border:none;
   border-radius:10px;
   color:white;
   cursor:pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.5);
+  transform: translateY(-2px);
 }
 
 .popup{
@@ -76,7 +125,7 @@ button{
   left:0;
   width:100%;
   height:100%;
-  background:rgba(0,0,0,0.7);
+  background:rgba(0,0,0,0.8);
   display:none;
   justify-content:center;
   align-items:center;
@@ -84,20 +133,28 @@ button{
 }
 
 .popup-content{
-  background:#1e293b;
+  background: linear-gradient(135deg, #1a5c4a 0%, #0f4c3a 100%);
   padding:25px;
   border-radius:15px;
   width:400px;
   max-height:80vh;
   overflow:auto;
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .close{
   float:right;
   cursor:pointer;
-  color:red;
+  color:#ff6b6b;
   font-size:20px;
+  font-weight: bold;
 }
+
+.close:hover {
+  color: #ff8787;
+}
+</style>
 </style>
 
 </head>

@@ -8,18 +8,41 @@
 body{
   margin:0;
   font-family:'Segoe UI';
-  background:#0f172a;
+  background: linear-gradient(135deg, #1a2a4a 0%, #2d3e5f 50%, #1a2a4a 100%);
+  background-attachment: fixed;
   color:white;
+  position: relative;
 }
 
-.container{padding:20px;}
+/* HSE Risk/Warning Pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(249, 115, 22, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container{
+  padding:20px;
+  position: relative;
+  z-index: 1;
+}
 
 .card{
-  background:#1e293b;
+  background: linear-gradient(135deg, #2d3e5f 0%, #1a2a4a 100%);
   padding:20px;
   border-radius:12px;
   max-width:600px;
   margin:20px auto;
+  border: 2px solid rgba(249, 115, 22, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 textarea{
@@ -28,27 +51,38 @@ textarea{
   margin-top:10px;
   border:none;
   border-radius:8px;
-  background:#020617;
-  color:white;
+  background: rgba(255, 255, 255, 0.95);
+  color:#1a2a4a;
+}
+
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
 }
 
 button{
-  background:#22c55e;
+  background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
   color:white;
   padding:10px 20px;
   border:none;
   border-radius:8px;
   cursor:pointer;
   margin-top:10px;
+  font-weight: bold;
+  transition: all 0.3s ease;
 }
 
-button:hover{background:#16a34a;}
+button:hover{
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.6);
+  transform: translateY(-2px);
+}
 
 .result{
   margin-top:15px;
   padding:10px;
-  background:#020617;
+  background: rgba(59, 130, 246, 0.1);
   border-radius:8px;
+  border-left: 4px solid #3b82f6;
 }
 </style>
 
@@ -57,31 +91,31 @@ button:hover{background:#16a34a;}
 <body>
 
 <!-- HEADER -->
-<div style="background:#020617;padding:20px;text-align:center;">
+<div style="background: linear-gradient(90deg, #1a2a4a 0%, #2d3e5f 50%, #1a3a4a 100%);padding:20px;text-align:center;box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);position: relative;z-index: 1;">
 
-  <h2 style="color:#22c55e;font-weight:bold;">
+  <h2 style="color:#f97316;font-weight:bold;text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">
     🤖 AI HSE Decision Support System
   </h2>
 
   <div style="margin-top:10px;">
 
-    <a href="/" style="margin:10px;color:white;text-decoration:none;">
+    <a href="/" style="margin:10px;color:white;text-decoration:none;transition: all 0.3s ease;" onmouseover="this.style.color='#f97316'" onmouseout="this.style.color='white'">
       📋 Safety Observation & Reporting 
     </a>
 
-    <a href="/companies" style="margin:10px;color:white;text-decoration:none;">
+    <a href="/companies" style="margin:10px;color:white;text-decoration:none;transition: all 0.3s ease;" onmouseover="this.style.color='#f97316'" onmouseout="this.style.color='white'">
       🏢 Companies
     </a>
 
-    <a href="/dashboard" style="margin:10px;color:white;text-decoration:none;">
+    <a href="/dashboard" style="margin:10px;color:white;text-decoration:none;transition: all 0.3s ease;" onmouseover="this.style.color='#f97316'" onmouseout="this.style.color='white'">
       📊 Dashboard
     </a>
 
-    <a href="/risk-assessment" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
+    <a href="/risk-assessment" style="margin:10px;color:#fb923c;font-weight:bold;text-decoration:none;border-bottom: 2px solid #fb923c;padding-bottom: 5px;">
       ⚠️ Risk Assessment
     </a>
 
-    <a href="/investigation" style="margin:10px;color:white;text-decoration:none;">
+    <a href="/investigation" style="margin:10px;color:white;text-decoration:none;transition: all 0.3s ease;" onmouseover="this.style.color='#f97316'" onmouseout="this.style.color='white'">
       🔍 Incident Investigation
     </a>
 
