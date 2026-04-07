@@ -31,17 +31,19 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
     🤖 AI HSE Decision Support System
   </h1>
   <div style="margin-top:10px;">
-    <a href="/" style="color:white;margin:0 15px;text-decoration:none;">
+    <a href="#" onclick="goHome()" style="color:white;margin:0 15px;text-decoration:none;">
       📋 Safety Observation & Reporting
     </a>
     <a href="/dashboard" style="color:#facc15;font-weight:bold;margin:0 15px;text-decoration:none;">
       📊 Dashboard
     </a>
-    <a href="/risk-assessment" style="color:white;margin:0 15px;text-decoration:none;">
-      ⚠️ Risk Assessment
-    </a>
-    <a href="/investigation" style="color:white;margin:0 15px;text-decoration:none;">
-      🔍 Incident Investigation
+    <a href="#" onclick="goPage('/risk-assessment')" style="color:white;margin:0 15px;text-decoration:none;">
+  ⚠️ Risk Assessment
+</a>
+
+<a href="#" onclick="goPage('/investigation')" style="color:white;margin:0 15px;text-decoration:none;">
+  🔍 Incident Investigation
+</a>
     </a>
     <a href="/logout" style="float:right; color:red; font-weight:bold;">
     🚪 Logout
@@ -591,7 +593,39 @@ async function loadManagementDecisions() {
     } catch(e) {
         console.error("Decision Load Error:", e);
     }
+    function goHome(){
+    const params = new URLSearchParams(window.location.search);
+    const company = params.get("company");
+
+    if(!company){
+        alert("Missing company ❌");
+        return;
+    }
+
+    window.location.href = `/?company=${company}`;
 }
+function goPage(path){
+    const params = new URLSearchParams(window.location.search);
+    const company = params.get("company");
+
+    if(!company){
+        alert("Missing company ❌");
+        return;
+    }
+
+    window.location.href = path + "?company=" + company;
+}
+}
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+
+        const params = new URLSearchParams(window.location.search);
+        const company = params.get("company");
+
+        window.location.href = this.getAttribute("href") + "?company=" + company;
+    });
+});
 </script>
 
 </body>

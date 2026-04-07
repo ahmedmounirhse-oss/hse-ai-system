@@ -202,6 +202,16 @@ async function downloadPDF(){
 // ================= INIT =================
 loadReports();
 
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+
+        const params = new URLSearchParams(window.location.search);
+        const company = params.get("company");
+
+        window.location.href = this.getAttribute("href") + "?company=" + company;
+    });
+});
 </script>
 
 </body>

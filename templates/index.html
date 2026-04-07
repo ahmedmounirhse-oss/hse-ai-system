@@ -165,9 +165,12 @@ document.getElementById("form").onsubmit = async function(e){
 
   // 🔥 خزّن اسم الشركة
   const params = new URLSearchParams(window.location.search);
-let company = params.get("company") || "default";
-localStorage.setItem("company", company);
+let company = params.get("company");
 
+if (!company) {
+  alert("Missing company in URL ❌");
+  return;
+}
   try {
 
     let company = localStorage.getItem("company") || "default";
@@ -229,21 +232,20 @@ ${data.justification ? data.justification : "AI analysis completed"}
   button.disabled = false;
 };
 
-document.addEventListener("DOMContentLoaded", function(){
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
 
-  const closeBtn = document.getElementById("closeBtn");
-  const popup = document.getElementById("popup");
+        const params = new URLSearchParams(window.location.search);
+        const company = params.get("company");
 
-  closeBtn.onclick = function(){
-    popup.style.display = "none";
-  };
+        if(!company){
+            alert("company missing ❌");
+            return;
+        }
 
-  popup.addEventListener("click", function(e){
-    if(e.target === popup){
-      popup.style.display = "none";
-    }
-  });
-
+        window.location.href = link.getAttribute("href") + "?company=" + company;
+    });
 });
 
 </script>

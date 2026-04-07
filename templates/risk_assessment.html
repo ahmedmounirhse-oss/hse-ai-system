@@ -73,11 +73,11 @@ button:hover{background:#16a34a;}
       📊 Dashboard
     </a>
 
-    <a href="/risk-assessment" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
+    <a href="#" onclick="goPage('/risk-assessment')"></a>
       ⚠️ Risk Assessment
     </a>
 
-    <a href="/investigation" style="margin:10px;color:white;text-decoration:none;">
+    <a href="#" onclick="goPage('/investigation')"></a>
       🔍 Incident Investigation
     </a>
 
@@ -186,7 +186,27 @@ Level: ${h.residual_level}
   });
 
 });
+function goPage(path){
+    const params = new URLSearchParams(window.location.search);
+    const company = params.get("company");
 
+    if(!company){
+        alert("Missing company ❌");
+        return;
+    }
+
+    window.location.href = `${path}?company=${company}`;
+}
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+
+        const params = new URLSearchParams(window.location.search);
+        const company = params.get("company");
+
+        window.location.href = this.getAttribute("href") + "?company=" + company;
+    });
+});
 </script>
 
 </body>
