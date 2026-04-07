@@ -229,6 +229,10 @@
                 if (data.success) {
                     showSuccess(messageContainer, data.message);
                     const redirectCompany = data.company || '{{ company }}';
+                    const loginLink = document.querySelector('a[href^="/login?company="]');
+                    if (loginLink) {
+                        loginLink.href = `/login?company=${encodeURIComponent(redirectCompany)}`;
+                    }
                     setTimeout(() => {
                         window.location.href = `/login?company=${encodeURIComponent(redirectCompany)}`;
                     }, 1500);

@@ -762,7 +762,7 @@ def register():
                 conn = get_db(timeout=30)
                 c = conn.cursor()
                 
-                c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
+                c.execute("SELECT id FROM companies WHERE lower(name)=?", (company_name,))
                 comp = c.fetchone()
 
                 if not comp:
@@ -813,7 +813,7 @@ def register():
 
         return jsonify({"success": False, "message": "❌ Database is busy, please try again"}), 500
 
-    company = request.args.get('company', 'default')
+    company = request.args.get('company', 'default').strip().lower()
     return render_template("register.html", company=company)
 
 
@@ -1016,36 +1016,52 @@ def login():
                 conn = get_db(timeout=30)
                 c = conn.cursor()
                 
-                c.execute("SELECT id FROM companies WHERE name=?", (company,))
-                comp = c.fetchone()
-
-                if not comp:
-                    c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
-                    conn.commit()
-                    company_id = c.lastrowid
-                    print(f"✅ Created new company during login: {company}")
-                else:
-                    company_id = comp[0]
-                    print(f"✅ Found company: {company} with ID: {company_id}")
-
-                # Check admin credentials for this company
-                c.execute("SELECT id, username FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
-                          (username, password, company_id))
+                # First, try to find an admin login for this company name across all matching rows
+                c.execute(
+                    """
+                    SELECT u.id, u.username, c.id
+                    FROM users u
+                    JOIN companies c ON u.company_id = c.id
+                    WHERE lower(c.name)=? AND u.username=? AND u.password=? AND u.is_admin=1
+                    """,
+                    (company, username, password)
+                )
                 admin_user = c.fetchone()
-                
-                if not admin_user:
-                    # Debug: Check if user exists but is not admin
-                    c.execute("SELECT id, is_admin FROM users WHERE username=? AND password=? AND company_id=?",
-                              (username, password, company_id))
-                    user = c.fetchone()
-                    if user:
-                        print(f"❌ User exists but is_admin={user[1]}")
+
+                if admin_user:
+                    company_id = admin_user[2]
+                    print(f"✅ Found matching admin user {username} for company {company} (ID: {company_id})")
+                else:
+                    c.execute("SELECT id FROM companies WHERE lower(name)=?", (company,))
+                    comp = c.fetchone()
+
+                    if not comp:
+                        c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+                        conn.commit()
+                        company_id = c.lastrowid
+                        print(f"✅ Created new company during login: {company}")
                     else:
-                        print(f"❌ User not found for company {company_id}")
-                        c.execute("SELECT username, is_admin FROM users WHERE company_id=?", (company_id,))
-                        users = c.fetchall()
-                        for u in users:
-                            print(f"   - {u[0]} (is_admin={u[1]})")
+                        company_id = comp[0]
+                        print(f"✅ Found company: {company} with ID: {company_id}")
+
+                    # Check admin credentials for this company
+                    c.execute("SELECT id, username FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
+                              (username, password, company_id))
+                    admin_user = c.fetchone()
+
+                    if not admin_user:
+                        # Debug: Check if user exists but is not admin
+                        c.execute("SELECT id, is_admin FROM users WHERE username=? AND password=? AND company_id=?",
+                                  (username, password, company_id))
+                        user = c.fetchone()
+                        if user:
+                            print(f"❌ User exists but is_admin={user[1]}")
+                        else:
+                            print(f"❌ User not found for company {company_id}")
+                            c.execute("SELECT username, is_admin FROM users WHERE company_id=?", (company_id,))
+                            users = c.fetchall()
+                            for u in users:
+                                print(f"   - {u[0]} (is_admin={u[1]})")
                 
                 conn.close()
 
@@ -1079,7 +1095,7 @@ def login():
 
         return "❌ Database is busy, please try again", 500
 
-    company = request.args.get('company', 'default')
+    company = request.args.get('company', 'default').strip().lower()
     return render_template("login.html", company=company)
 
 @app.route('/companies')
