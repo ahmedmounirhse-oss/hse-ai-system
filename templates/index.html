@@ -247,6 +247,29 @@ document.querySelectorAll("a[href^='/']").forEach(link => {
         window.location.href = link.getAttribute("href") + "?company=" + company;
     });
 });
+// ================= AUTO COMPANY HANDLER =================
+
+// 1️⃣ جيب الشركة من URL
+const params = new URLSearchParams(window.location.search);
+const COMPANY = params.get("company");
+
+if (!COMPANY) {
+    alert("Missing company in URL ❌");
+}
+
+// 2️⃣ تعديل كل fetch تلقائيًا
+const originalFetch = window.fetch;
+
+window.fetch = function(url, options = {}) {
+    if (typeof url === "string" && !url.includes("company=")) {
+        if (url.includes("?")) {
+            url += "&company=" + COMPANY;
+        } else {
+            url += "?company=" + COMPANY;
+        }
+    }
+    return originalFetch(url, options);
+};
 
 </script>
 
