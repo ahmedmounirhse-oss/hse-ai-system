@@ -52,9 +52,15 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
   <h1 style="margin:0;color:#22c55e;">
     🤖 AI HSE Decision Support System
   </h1>
+  <div style="margin-top:5px;">
+    <span style="color:#94a3b8;font-size:14px;">Company: <strong id="company-name">Loading...</strong></span>
+  </div>
   <div style="margin-top:10px;">
     <a href="/" style="color:white;margin:0 15px;text-decoration:none;">
       📋 Safety Observation & Reporting
+    </a>
+    <a href="/companies" style="color:white;margin:0 15px;text-decoration:none;">
+      🏢 Companies
     </a>
     <a href="/dashboard" style="color:#facc15;font-weight:bold;margin:0 15px;text-decoration:none;">
       📊 Dashboard
@@ -325,6 +331,9 @@ if (!COMPANY) {
     const currentPath = window.location.pathname;
     window.location.href = currentPath + "?company=default";
 }
+
+// Display company name
+document.getElementById("company-name").textContent = COMPANY.charAt(0).toUpperCase() + COMPANY.slice(1);
 
 const originalFetch = window.fetch;
 

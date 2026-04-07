@@ -128,13 +128,26 @@ CREATE TABLE IF NOT EXISTS companies (
     name TEXT UNIQUE
 )
 """)
-    # users table
+    # users table with admin support (recreate if needed)
+    try:
+        # Check if table exists and has old structure
+        c.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+        table_def = c.fetchone()
+        if table_def and 'emp_id' in table_def[0]:
+            # Drop old table and recreate
+            c.execute("DROP TABLE users")
+            print("Dropped old users table")
+    except:
+        pass
+
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id TEXT UNIQUE,
-            name TEXT,
-            points INTEGER
+            username TEXT UNIQUE,
+            password TEXT,
+            company_id INTEGER,
+            is_admin INTEGER DEFAULT 0,
+            FOREIGN KEY (company_id) REFERENCES companies (id)
         )
     """)
 
@@ -144,6 +157,43 @@ CREATE TABLE IF NOT EXISTS companies (
 
 # ✅ هنا بس تناديها (بعد التعريف)
 init_db()
+
+# Create default admin users for companies
+def create_default_admins():
+    companies = ["default", "company1", "company2", "company3", "company4"]
+
+    conn = get_db()
+    c = conn.cursor()
+
+    for company_name in companies:
+        # Get or create company
+        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
+        comp = c.fetchone()
+
+        if not comp:
+            c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
+            conn.commit()
+            company_id = c.lastrowid
+        else:
+            company_id = comp[0]
+
+        # Create default admin user for this company
+        admin_username = f"admin_{company_name}"
+        admin_password = f"admin123_{company_name}"
+
+        # Check if admin already exists
+        c.execute("SELECT id FROM users WHERE username=? AND company_id=?", (admin_username, company_id))
+        existing_admin = c.fetchone()
+
+        if not existing_admin:
+            c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
+                      (admin_username, admin_password, company_id, 1))
+            print(f"✅ Created admin user for {company_name}: {admin_username} / {admin_password}")
+
+    conn.commit()
+    conn.close()
+
+create_default_admins()
 
 
 # ✅ تحميل API Key بشكل آمن
@@ -667,14 +717,14 @@ def register():
         company_id = comp[0]
 
     try:
-        c.execute("INSERT INTO users (username, password, company_id) VALUES (?, ?, ?)",
-                  (username, password, company_id))
+        c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
+                  (username, password, company_id, 1))  # Default to admin for now
         conn.commit()
     except:
         return jsonify({"error": "User exists"}), 400
 
     conn.close()
-    return jsonify({"message": "Registered successfully"})
+    return jsonify({"message": "Admin user registered successfully"})
 
 
 def analyze_with_gpt(hazard_desc):
@@ -864,24 +914,54 @@ def login():
     if request.method == 'POST':
         username = request.form.get("username")
         password = request.form.get("password")
+        company = request.form.get("company", "default")
 
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin'] = True
-            return redirect('/dashboard')
+        # Get or create company
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("SELECT id FROM companies WHERE name=?", (company,))
+        comp = c.fetchone()
+
+        if not comp:
+            c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+            conn.commit()
+            company_id = c.lastrowid
         else:
-            return "❌ Wrong credentials"
+            company_id = comp[0]
 
-    return render_template("login.html")
+        # Check admin credentials for this company
+        c.execute("SELECT id FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
+                  (username, password, company_id))
+        admin_user = c.fetchone()
+        conn.close()
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/')
+        if admin_user:
+            session['admin'] = True
+            session['company_id'] = company_id
+            session['company_name'] = company
+            return redirect(f'/dashboard?company={company}')
+        else:
+            return "❌ Wrong credentials or not an admin user"
+
+    # Get company from URL parameter
+    company = request.args.get('company', 'default')
+    return render_template("login.html", company=company)
+
+@app.route('/companies')
+def companies():
+    return render_template("companies.html")
 
 @app.route('/dashboard')
 def dashboard():
     if not session.get('admin'):
-        return redirect('/login')
+        company = request.args.get('company', 'default')
+        return redirect(f'/login?company={company}')
+
+    # Ensure the user has access to the requested company
+    company = request.args.get('company', 'default')
+    if session.get('company_name') != company:
+        return redirect(f'/login?company={company}')
+
     return render_template("dashboard.html")
 
 @app.route('/submit', methods=['POST'])
