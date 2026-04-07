@@ -111,7 +111,11 @@ button:hover{background:#16a34a;}
 </div>
 
 <script>
-
+constparams = new URLSearchParams(window.location.search);
+if (!params.get("company")) {
+    const currentPath = window.location.pathname;
+    window.location.href = currentPath + "?company=default";
+}
 document.addEventListener("DOMContentLoaded", function(){
 
   const analyzeBtn = document.getElementById("analyzeBtn");

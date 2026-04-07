@@ -79,7 +79,11 @@ Run AI Investigation
 </div>
 
 <script>
-
+constparams = new URLSearchParams(window.location.search);
+if (!params.get("company")) {
+    const currentPath = window.location.pathname;
+    window.location.href = currentPath + "?company=default";
+}
 let lastResult = null;
 
 // ================= LOAD REPORTS =================
