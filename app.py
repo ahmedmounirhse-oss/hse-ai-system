@@ -694,37 +694,50 @@ def reports():
         print("REPORT ERROR:", e)
         return jsonify([])
 
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    data = request.json
+    if request.method == 'POST':
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        company = request.form.get("company", "default")
 
-    username = data.get("username")
-    password = data.get("password")
-    company = data.get("company")
+        # Validate input
+        if not username or not password:
+            return "❌ Username and password are required", 400
 
-    conn = get_db()
-    c = conn.cursor()
+        if password != confirm_password:
+            return "❌ Passwords do not match", 400
 
-    # create or get company
-    c.execute("SELECT id FROM companies WHERE name=?", (company,))
-    comp = c.fetchone()
+        if len(password) < 6:
+            return "❌ Password must be at least 6 characters", 400
 
-    if not comp:
-        c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
-        conn.commit()
-        company_id = c.lastrowid
-    else:
-        company_id = comp[0]
+        # Get or create company
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("SELECT id FROM companies WHERE name=?", (company,))
+        comp = c.fetchone()
 
-    try:
-        c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
-                  (username, password, company_id, 1))  # Default to admin for now
-        conn.commit()
-    except:
-        return jsonify({"error": "User exists"}), 400
+        if not comp:
+            c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+            conn.commit()
+            company_id = c.lastrowid
+        else:
+            company_id = comp[0]
 
-    conn.close()
-    return jsonify({"message": "Admin user registered successfully"})
+        try:
+            c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
+                      (username, password, company_id, 1))
+            conn.commit()
+            conn.close()
+            return f"✅ Admin account created successfully for {company}! You can now login."
+        except sqlite3.IntegrityError:
+            conn.close()
+            return "❌ Username already exists", 400
+
+    # Get company from URL parameter
+    company = request.args.get('company', 'default')
+    return render_template("register.html", company=company)
 
 
 def analyze_with_gpt(hazard_desc):
@@ -1312,6 +1325,91 @@ def leaderboard():
     except Exception as e:
         print("Error in /leaderboard:", e)
         return jsonify([])
+# ================== USER MANAGEMENT API ==================
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    if not session.get('admin'):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    company_id = session.get('company_id')
+    if not company_id:
+        return jsonify({"error": "No company session"}), 401
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id, username FROM users WHERE company_id=? AND is_admin=1", (company_id,))
+    users = [{"id": row[0], "username": row[1]} for row in c.fetchall()]
+    conn.close()
+
+    return jsonify(users)
+
+@app.route('/api/users', methods=['POST'])
+def add_user():
+    if not session.get('admin'):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    company_id = session.get('company_id')
+    if not company_id:
+        return jsonify({"error": "No company session"}), 401
+
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    conn = get_db()
+    c = conn.cursor()
+
+    try:
+        c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
+                  (username, password, company_id, 1))
+        conn.commit()
+        user_id = c.lastrowid
+        conn.close()
+        return jsonify({"message": "User created successfully", "user_id": user_id})
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({"error": "Username already exists"}), 400
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    if not session.get('admin'):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    company_id = session.get('company_id')
+    if not company_id:
+        return jsonify({"error": "No company session"}), 401
+
+    conn = get_db()
+    c = conn.cursor()
+
+    # Check if user belongs to the same company and is not the current user
+    c.execute("SELECT id FROM users WHERE id=? AND company_id=? AND id != ?",
+              (user_id, company_id, session.get('user_id', 0)))
+    user = c.fetchone()
+
+    if not user:
+        conn.close()
+        return jsonify({"error": "User not found or cannot delete yourself"}), 404
+
+    c.execute("DELETE FROM users WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "User deleted successfully"})
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    company = request.args.get('company', 'default')
+    return redirect(f'/login?company={company}')
+
 # ================== RUN ==================
 
 import os

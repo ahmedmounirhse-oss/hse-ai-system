@@ -99,6 +99,9 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#leaderboard">Leaderboard</button>
   </li>
   <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#user-management">👥 User Management</button>
+  </li>
+  <li class="nav-item">
   <button class="nav-link" data-bs-toggle="tab" data-bs-target="#management">
     🧠 Management Decisions
   </button>
@@ -311,6 +314,23 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
 <div id="leaderboard-list"></div>
 </div>
 </div>
+<!-- ================= USER MANAGEMENT ================= -->
+<div class="tab-pane fade" id="user-management">
+<div class="content-card">
+  <h5>👥 Admin User Management</h5>
+
+  <div class="mb-4">
+    <button class="btn btn-success mb-3" onclick="showAddUserModal()">
+      ➕ Add New Admin
+    </button>
+  </div>
+
+  <div id="users-list">
+    <!-- Users will be loaded here -->
+  </div>
+</div>
+</div>
+
 <!-- ================= MANAGEMENT DECISIONS ================= -->
 <div class="tab-pane fade" id="management">
 <div class="content-card">
@@ -1045,16 +1065,133 @@ async function loadManagementDecisions() {
     } catch(e) {
         console.error("Decision Load Error:", e);
     }
-}
-
 document.addEventListener("DOMContentLoaded", load);
 document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
     tab.addEventListener('shown.bs.tab', function (event) {
         if (event.target.getAttribute("data-bs-target") === "#management") {
             loadManagementDecisions();
         }
+        if (event.target.getAttribute("data-bs-target") === "#user-management") {
+            loadUsers();
+        }
     });
 });
+
+// ================= USER MANAGEMENT =================
+async function loadUsers() {
+    try {
+        let res = await fetch('/api/users');
+        let users = await res.json();
+
+        let container = document.getElementById("users-list");
+
+        if (users.length === 0) {
+            container.innerHTML = "<div class='alert alert-info'>No admin users found</div>";
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${user.username}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id}, '${user.username}')">
+                                        🗑️ Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+    } catch(e) {
+        console.error("Users Load Error:", e);
+        document.getElementById("users-list").innerHTML = "<div class='alert alert-danger'>Error loading users</div>";
+    }
+}
+
+function showAddUserModal() {
+    const username = prompt("Enter new admin username:");
+    if (!username) return;
+
+    const password = prompt("Enter password (minimum 6 characters):");
+    if (!password || password.length < 6) {
+        alert("Password must be at least 6 characters");
+        return;
+    }
+
+    const confirmPassword = prompt("Confirm password:");
+    if (confirmPassword !== password) {
+        alert("Passwords do not match");
+        return;
+    }
+
+    addUser(username, password);
+}
+
+async function addUser(username, password) {
+    try {
+        let res = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+
+        let data = await res.json();
+
+        if (res.ok) {
+            alert("User created successfully!");
+            loadUsers(); // Reload the users list
+        } else {
+            alert("Error: " + data.error);
+        }
+
+    } catch(e) {
+        console.error("Add User Error:", e);
+        alert("Error adding user");
+    }
+}
+
+async function deleteUser(userId, username) {
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+        return;
+    }
+
+    try {
+        let res = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE'
+        });
+
+        let data = await res.json();
+
+        if (res.ok) {
+            alert("User deleted successfully!");
+            loadUsers(); // Reload the users list
+        } else {
+            alert("Error: " + data.error);
+        }
+
+    } catch(e) {
+        console.error("Delete User Error:", e);
+        alert("Error deleting user");
+    }
+}
 
 </script>
 
