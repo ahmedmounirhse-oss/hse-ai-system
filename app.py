@@ -700,7 +700,7 @@ def register():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         confirm_password = request.form.get("confirm_password", "").strip()
-        company_name = request.form.get("company_name", "").strip()
+        company_name = request.form.get("company_name", "").strip().lower()  # Normalize to lowercase
         company = request.form.get("company", "default")
 
         # Validate input
@@ -734,8 +734,10 @@ def register():
                 c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
                 conn.commit()
                 company_id = c.lastrowid
+                print(f"✅ Created new company: {company_name} with ID: {company_id}")
             else:
                 company_id = comp[0]
+                print(f"✅ Using existing company: {company_name} with ID: {company_id}")
 
             # Check if username already exists for this company
             c.execute("SELECT id FROM users WHERE username=? AND company_id=?", (username, company_id))
@@ -746,11 +748,22 @@ def register():
             c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
                       (username, password, company_id, 1))
             conn.commit()
+            
+            # Verify the insert
+            c.execute("SELECT id FROM users WHERE username=? AND company_id=?", (username, company_id))
+            new_user = c.fetchone()
+            
             conn.close()
-            return f"✅ Admin account created successfully for {company_name}! You can now login."
+            
+            if new_user:
+                return f"✅ Admin account created successfully for {company_name}! You can now login."
+            else:
+                return "❌ Account created but verification failed. Please try logging in.", 400
         
         except Exception as e:
             print(f"REGISTRATION ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             return f"❌ Registration error: {str(e)}", 500
 
     # Get company from URL parameter
@@ -943,36 +956,65 @@ def assess_risk():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get("username")
-        password = request.form.get("password")
-        company = request.form.get("company", "default")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        company = request.form.get("company", "default").strip().lower()  # Normalize to lowercase
 
-        # Get or create company
-        conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT id FROM companies WHERE name=?", (company,))
-        comp = c.fetchone()
+        if not username or not password:
+            return "❌ Username and password are required", 400
 
-        if not comp:
-            c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
-            conn.commit()
-            company_id = c.lastrowid
-        else:
-            company_id = comp[0]
+        try:
+            # Get or create company
+            conn = get_db()
+            c = conn.cursor()
+            c.execute("SELECT id FROM companies WHERE name=?", (company,))
+            comp = c.fetchone()
 
-        # Check admin credentials for this company
-        c.execute("SELECT id FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
-                  (username, password, company_id))
-        admin_user = c.fetchone()
-        conn.close()
+            if not comp:
+                c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+                conn.commit()
+                company_id = c.lastrowid
+                print(f"✅ Created new company during login: {company}")
+            else:
+                company_id = comp[0]
+                print(f"✅ Found company: {company} with ID: {company_id}")
 
-        if admin_user:
-            session['admin'] = True
-            session['company_id'] = company_id
-            session['company_name'] = company
-            return redirect(f'/dashboard?company={company}')
-        else:
-            return "❌ Wrong credentials or not an admin user"
+            # Check admin credentials for this company
+            c.execute("SELECT id, username FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
+                      (username, password, company_id))
+            admin_user = c.fetchone()
+            
+            if not admin_user:
+                # Debug: Check if user exists but is not admin
+                c.execute("SELECT id, is_admin FROM users WHERE username=? AND password=? AND company_id=?",
+                          (username, password, company_id))
+                user = c.fetchone()
+                if user:
+                    print(f"❌ User exists but is_admin={user[1]}")
+                else:
+                    print(f"❌ User not found. Checking available users for company {company_id}:")
+                    c.execute("SELECT username, is_admin FROM users WHERE company_id=?", (company_id,))
+                    users = c.fetchall()
+                    for u in users:
+                        print(f"   - {u[0]} (is_admin={u[1]})")
+            
+            conn.close()
+
+            if admin_user:
+                session['admin'] = True
+                session['company_id'] = company_id
+                session['company_name'] = company
+                print(f"✅ Login successful for {username}")
+                return redirect(f'/dashboard?company={company}')
+            else:
+                print(f"❌ Login failed for {username} on company {company}")
+                return "❌ Wrong credentials or not an admin user", 401
+        
+        except Exception as e:
+            print(f"LOGIN ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            return f"❌ Login error: {str(e)}", 500
 
     # Get company from URL parameter
     company = request.args.get('company', 'default')
