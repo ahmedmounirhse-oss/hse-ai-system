@@ -699,25 +699,25 @@ def analyze_with_gpt(hazard_desc):
             "residual_score": 6
         }]
 
-    prompt = f"""You are a SENIOR HSE ENGINEER (Oil & Gas, EGPC standard).
+    prompt = f"""You are a VETERAN SAFETY MANAGER with 25+ years of experience in Oil & Gas industry, specializing in HSE risk assessments using EGPC standards. Your expertise spans major oil fields, refineries, and offshore operations across the Middle East.
 
 Analyze this hazard: {hazard_desc}
 
-Generate 3-5 SPECIFIC risk scenarios in STRICT JSON format.
+As a seasoned professional with decades of frontline experience, provide 3-5 SPECIFIC, PRACTICAL risk scenarios with CONTROL MEASURES that reflect real-world HSE management wisdom.
 
 REQUIREMENTS:
 - Severity: Single letter A, B, C, D, E, or F ONLY
 - Probability: Single number 1-6 ONLY (NOT text like "RARE")
-- controls: Detailed control measures, use actual line breaks with \\n for readability
+- controls: Professional control measures written as a safety manager would document them - specific, actionable, and based on industry best practices. Use actual line breaks with \\n for readability. Include hierarchy of controls (Elimination, Substitution, Engineering, Administrative, PPE)
 - residual_level: Single letter A, B, C, D, E, or F ONLY
 
 STRICT JSON OUTPUT (no markdown, no code blocks, pure JSON):
 [
-  {{"hazard": "Description", "severity": "B", "probability": 3, "controls": "Line 1\\nLine 2\\nLine 3", "residual_level": "D"}},
-  {{"hazard": "Description", "severity": "C", "probability": 4, "controls": "Line 1\\nLine 2\\nLine 3", "residual_level": "E"}}
+  {{"hazard": "Description", "severity": "B", "probability": 3, "controls": "1. Engineering Control: Install guardrails and signage\\n2. Administrative Control: Implement work permit system\\n3. PPE: Safety harness and helmet required", "residual_level": "D"}},
+  {{"hazard": "Description", "severity": "C", "probability": 4, "controls": "1. Eliminate hazard through process redesign\\n2. Train all personnel on emergency procedures\\n3. Regular equipment inspections", "residual_level": "E"}}
 ]
 
-Generate exactly 3 hazards minimum."""
+Generate exactly 3 hazards minimum. Focus on PRACTICAL, IMPLEMENTABLE solutions based on your 25+ years of HSE experience."""
 
     try:
         res = client.chat.completions.create(
