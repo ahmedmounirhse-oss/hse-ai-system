@@ -679,135 +679,171 @@ def register():
 
 def analyze_with_gpt(hazard_desc):
     """
-    EGPC Risk Matrix Analysis
+    EGPC Risk Matrix Analysis - Comprehensive Risk Assessment
+    Severity: A-F (numeric 6-1)
+    Probability: 1-6
+    Risk Score: Severity × Probability
     """
 
     if not client:
         return [{
+            "step": 1,
             "hazard": "N/A",
             "severity": "A",
-            "probability": "1",
-            "risk_code": "1A",
+            "probability": 1,
+            "risk_score": 6,
             "risk_level": "LOW",
-            "color": "#28a745",
-            "recommendation": "AI not initialized",
-            "residual_level": "A"
+            "color": "#22c55e",
+            "controls": "AI not initialized",
+            "residual_level": "A",
+            "residual_score": 6
         }]
 
-    prompt = f"""
-You are a SENIOR HSE ENGINEER (20+ years experience in Oil & Gas, EGPC standards).
+    prompt = f"""You are a SENIOR HSE ENGINEER (Oil & Gas, EGPC standard).
 
-STRICT RULES:
-- Severity: A, B, C, D, E, F ONLY
-- Probability: 1–6 ONLY
-- No words like HIGH / LOW / LIKELY
+Analyze this hazard: {hazard_desc}
 
-Generate minimum 3 hazards.
+Generate 3-5 SPECIFIC risk scenarios in STRICT JSON format.
 
-Return ONLY JSON.
-Hazard Description:
-{hazard_desc}
-"""
+REQUIREMENTS:
+- Severity: Single letter A, B, C, D, E, or F ONLY
+- Probability: Single number 1-6 ONLY (NOT text like "RARE")
+- controls: Detailed control measures, use actual line breaks with \\n for readability
+- residual_level: Single letter A, B, C, D, E, or F ONLY
+
+STRICT JSON OUTPUT (no markdown, no code blocks, pure JSON):
+[
+  {{"hazard": "Description", "severity": "B", "probability": 3, "controls": "Line 1\\nLine 2\\nLine 3", "residual_level": "D"}},
+  {{"hazard": "Description", "severity": "C", "probability": 4, "controls": "Line 1\\nLine 2\\nLine 3", "residual_level": "E"}}
+]
+
+Generate exactly 3 hazards minimum."""
 
     try:
         res = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            max_tokens=800
+            temperature=0.5,
+            max_tokens=1500
         )
 
         txt = res.choices[0].message.content.strip()
+        print(f"[DEBUG] Raw AI response:\n{txt[:500]}\n")
 
+        # Clean markdown code blocks
         if "```" in txt:
             txt = txt.replace("```json", "").replace("```", "").strip()
 
+        # Remove any text before first [ or after last ]
         import re, json
         match = re.search(r'\[.*\]', txt, re.DOTALL)
         if match:
             txt = match.group()
+        else:
+            print(f"[ERROR] No JSON array found in response")
+            raise ValueError("AI response doesn't contain valid JSON array")
 
         result = json.loads(txt)
-
         if not isinstance(result, list):
-            result = [result]
+            result = [result] if isinstance(result, dict) else []
 
-        # ===== CONVERSION =====
-        sev_convert = {"HIGH":"B","MEDIUM":"D","LOW":"F"}
-        prob_convert = {
-            "RARE":1,"UNLIKELY":2,"POSSIBLE":3,
-            "LIKELY":4,"VERY LIKELY":5,"CERTAIN":6
-        }
+        if not result:
+            raise ValueError("Empty result array")
 
-        # ===== EGPC MATRIX =====
-        risk_matrix = {
-            "1A":"HIGH","2A":"HIGH","3A":"CRITICAL","4A":"CRITICAL","5A":"CRITICAL","6A":"CRITICAL",
-            "1B":"MEDIUM","2B":"HIGH","3B":"HIGH","4B":"CRITICAL","5B":"CRITICAL","6B":"CRITICAL",
-            "1C":"LOW","2C":"MEDIUM","3C":"HIGH","4C":"HIGH","5C":"CRITICAL","6C":"CRITICAL",
-            "1D":"LOW","2D":"LOW","3D":"MEDIUM","4D":"HIGH","5D":"HIGH","6D":"CRITICAL",
-            "1E":"LOW","2E":"LOW","3E":"MEDIUM","4E":"MEDIUM","5E":"HIGH","6E":"HIGH",
-            "1F":"LOW","2F":"LOW","3F":"LOW","4F":"MEDIUM","5F":"MEDIUM","6F":"HIGH"
-        }
+        # EGPC Mapping
+        sev_map = {'A': 6, 'B': 5, 'C': 4, 'D': 3, 'E': 2, 'F': 1}
+        sev_convert = {"HIGH": "B", "MEDIUM": "D", "LOW": "F", "CRITICAL": "A"}
+        prob_convert = {"RARE": 1, "UNLIKELY": 2, "POSSIBLE": 3, "LIKELY": 4, "VERY LIKELY": 5, "CERTAIN": 6}
 
-        color_map = {
-            "LOW":"#28a745",
-            "MEDIUM":"#ffc107",
-            "HIGH":"#fd7e14",
-            "CRITICAL":"#dc3545"
-        }
+        for idx, item in enumerate(result, 1):
+            # Severity conversion
+            sev = str(item.get("severity", "C")).upper().strip()
+            if len(sev) > 1 or sev not in ['A', 'B', 'C', 'D', 'E', 'F']:
+                sev = sev_convert.get(sev, "C")
+            sev = sev[0]  # Ensure single letter
 
-        # ===== LOOP =====
-        for item in result:
-
-            sev = str(item.get("severity","C")).upper()
-            if sev not in ['A','B','C','D','E','F']:
-                sev = sev_convert.get(sev,"C")
-
-            prob_raw = str(item.get("probability","3")).upper()
-
+            # Probability conversion
+            prob_raw = str(item.get("probability", "3")).upper().strip()
             try:
                 prob = int(prob_raw)
             except:
-                prob = prob_convert.get(prob_raw,3)
+                prob = prob_convert.get(prob_raw, 3)
+            prob = max(1, min(6, prob))
 
-            prob = max(1,min(6,prob))
+            # Risk Score
+            sev_val = sev_map.get(sev, 4)
+            score = sev_val * prob
 
-            risk_code = f"{prob}{sev}"
-            level = risk_matrix.get(risk_code,"MEDIUM")
-            color = color_map[level]
+            # Risk Level & Color
+            if score <= 6:
+                level, color = "LOW", "#22c55e"
+            elif score <= 12:
+                level, color = "MEDIUM", "#ffc107"
+            elif score <= 24:
+                level, color = "HIGH", "#fd7e14"
+            else:
+                level, color = "CRITICAL", "#dc3545"
 
+            # Residual Level
+            res_sev = str(item.get("residual_level", "E")).upper().strip()
+            if len(res_sev) > 1 or res_sev not in ['A', 'B', 'C', 'D', 'E', 'F']:
+                res_sev = chr(ord(sev) + 1) if ord(sev) < ord('F') else 'F'
+            res_sev = res_sev[0]
+
+            res_val = sev_map.get(res_sev, 3)
+            residual_score = res_val * 1
+
+            # Update item with all required fields
+            item["step"] = idx
+            item["hazard"] = str(item.get("hazard", "Unknown hazard")).strip()[:150]
             item["severity"] = sev
-            item["probability"] = str(prob)
-            item["risk_code"] = risk_code
+            item["probability"] = prob
+            item["risk_score"] = score
             item["risk_level"] = level
             item["color"] = color
+            item["controls"] = str(item.get("controls", "N/A")).replace("\\n", "\n")
+            item["residual_level"] = res_sev
+            item["residual_score"] = residual_score
 
-            item["recommendation"] = item.get("recommendation","") + """
-
-- Eliminate work at height where possible
-- Use certified scaffolding with green tag system
-- Assign competent scaffolding supervisor
-- Apply full body harness with double lanyard
-- Conduct toolbox talk before work
-- Ensure permit to work (PTW) system is active
-"""
-
+        # Ensure minimum 3 hazards
         if len(result) < 3:
-            result = result * 3
+            base = result[0].copy()
+            for i in range(len(result), 3):
+                new_item = base.copy()
+                new_item["step"] = i + 1
+                new_item["hazard"] = base.get("hazard", "Hazard") + f" (Scenario {i+1})"
+                result.append(new_item)
 
         return result
 
-    except Exception as e:
-        print("EGPC ERROR:", e)
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] JSON Parse Error: {e}")
+        print(f"[ERROR] Attempted to parse: {txt[:300]}")
         return [{
-            "hazard": "Error",
-            "severity": "C",
-            "probability": "3",
-            "risk_code": "3C",
-            "risk_level": "MEDIUM",
-            "color": "#ffc107",
-            "recommendation": "Fallback result",
-            "residual_level": "C"
+            "step": 1,
+            "hazard": f"JSON Parse Error",
+            "severity": "A",
+            "probability": 1,
+            "risk_score": 6,
+            "risk_level": "LOW",
+            "color": "#22c55e",
+            "controls": f"Failed to parse AI response: {str(e)[:80]}",
+            "residual_level": "F",
+            "residual_score": 1
+        }]
+    except Exception as e:
+        print(f"[ERROR] EGPC Analysis Error: {type(e).__name__}: {e}")
+        return [{
+            "step": 1,
+            "hazard": "Analysis Error",
+            "severity": "A",
+            "probability": 1,
+            "risk_score": 6,
+            "risk_level": "LOW",
+            "color": "#22c55e",
+            "controls": f"Error: {str(e)[:100]}",
+            "residual_level": "F",
+            "residual_score": 1
         }]
 
 @app.route('/assess_risk', methods=['POST'])

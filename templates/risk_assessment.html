@@ -186,40 +186,127 @@ document.addEventListener("DOMContentLoaded", function(){
       });
 
       const data = await res.json();
+      console.log("API Response:", data);
 
-      if(data.error || (Array.isArray(data) && data[0].error)){
+      if(data.error || (Array.isArray(data) && data[0] && data[0].error)){
         aiError.style.display="block";
         aiResult.style.display="none";
-        aiError.innerHTML = data.error || data[0].error || "AI failed";
+        aiError.innerHTML = "❌ " + (data.error || data[0].error || "AI failed");
         return;
       }
 
-      aiResult.innerHTML = data.map(h => `
-<div style="margin-bottom:15px;padding:15px;border-radius:12px;background:#020617;border-left:6px solid ${h.color};">
+      if(!Array.isArray(data) || data.length === 0){
+        aiError.style.display="block";
+        aiResult.style.display="none";
+        aiError.innerHTML = "❌ No valid data received";
+        return;
+      }
 
-<b style="color:#38bdf8">Hazard:</b> ${h.hazard}<br><br>
+      // Validate and render each hazard
+      let htmlOutput = "";
+      
+      for(let h of data){
+        if(!h.step || !h.severity || h.probability === undefined){
+          console.error("Invalid data structure:", h);
+          continue;
+        }
 
-<b>EGPC Matrix:</b><br>
-Severity: <b>${h.severity}</b> | 
-Probability: <b>${h.probability}</b><br>
-Risk Code: <b style="color:${h.color};font-size:18px;">${h.risk_code}</b><br>
+        const severityValue = {'A': 6, 'B': 5, 'C': 4, 'D': 3, 'E': 2, 'F': 1}[h.severity] || 4;
+        
+        htmlOutput += `
+<div style="margin-bottom:20px;padding:18px;border-radius:12px;background:#020617;border-left:8px solid ${h.color};">
 
+  <!-- الخطوة -->
+  <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #334155;">
+    <div style="font-size:14px;color:#94a3b8;">
+      <b>الخطوة | Step:</b> <span style="color:#38bdf8;font-size:16px;font-weight:bold;">${h.step}</span>
+    </div>
+    <div style="font-size:14px;color:${h.color};font-weight:bold;">
+      ⚠️ ${h.risk_level}
+    </div>
+  </div>
 
-<b style="color:${h.color};font-size:16px;">⚠️ ${h.risk_level}</b><br><br>
+  <!-- الخطر -->
+  <div style="margin-bottom:12px;padding:10px;background:#1a1f35;border-radius:8px;border-left:4px solid #38bdf8;">
+    <b style="color:#38bdf8;font-size:14px;">الخطر | Hazard:</b>
+    <div style="margin-top:6px;color:white;line-height:1.6;">
+      ${(h.hazard || 'N/A')}
+    </div>
+  </div>
 
-<b style="color:#22c55e">Controls:</b><br>
-${h.recommendation}<br><br>
+  <!-- مصفوفة EGPC -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:15px;">
+    
+    <!-- الشدة -->
+    <div style="background:#1a1f35;padding:10px;border-radius:8px;border-top:3px solid #22c55e;">
+      <b style="color:#22c55e;font-size:12px;">الشدة | Severity</b>
+      <div style="margin-top:8px;font-size:24px;font-weight:bold;color:#38bdf8;">
+        ${h.severity}
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+        (Value: ${severityValue})
+      </div>
+    </div>
 
-<b style="color:#a78bfa">Residual:</b><br>
-${h.residual_level}
+    <!-- الاحتمالية -->
+    <div style="background:#1a1f35;padding:10px;border-radius:8px;border-top:3px solid #ffc107;">
+      <b style="color:#ffc107;font-size:12px;">الاحتمالية | Probability</b>
+      <div style="margin-top:8px;font-size:24px;font-weight:bold;color:#38bdf8;">
+        ${h.probability}
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+        (Scale: 1-6)
+      </div>
+    </div>
+
+    <!-- حساب الخطر -->
+    <div style="background:#1a1f35;padding:10px;border-radius:8px;border-top:3px solid #fd7e14;">
+      <b style="color:#fd7e14;font-size:12px;">حساب الخطر | Risk Score</b>
+      <div style="margin-top:8px;font-size:24px;font-weight:bold;color:${h.color};">
+        ${h.risk_score}
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+        (${h.severity} × ${h.probability} = ${h.risk_score})
+      </div>
+    </div>
+
+  </div>
+
+  <!-- خطوات التحكم -->
+  <div style="margin-bottom:15px;padding:12px;background:#1a1f35;border-radius:8px;border-left:4px solid #22c55e;">
+    <b style="color:#22c55e;font-size:13px;">خطوات التحكم في الخطر | Control Measures</b>
+    <div style="margin-top:10px;line-height:1.8;color:#e2e8f0;font-size:13px;white-space:pre-wrap;">
+      ${(h.controls || 'N/A')}
+    </div>
+  </div>
+
+  <!-- حساب الخطورة بعد التحكم -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;background:#1a1f35;border-radius:8px;border-left:4px solid #a78bfa;">
+    <div>
+      <b style="color:#a78bfa;font-size:12px;">الحد المتبقي | Residual Level</b>
+      <div style="margin-top:8px;font-size:20px;font-weight:bold;color:white;">
+        ${h.residual_level}
+      </div>
+    </div>
+    <div>
+      <b style="color:#a78bfa;font-size:12px;">حساب الخطورة المتبقية | Residual Score</b>
+      <div style="margin-top:8px;font-size:20px;font-weight:bold;color:#a78bfa;">
+        ${h.residual_score}
+      </div>
+    </div>
+  </div>
 
 </div>
-`).join("");
+`;
+      }
+
+      aiResult.innerHTML = htmlOutput;
 
     }catch(e){
+      console.error("Exception:", e);
       aiError.style.display="block";
       aiResult.style.display="none";
-      aiError.innerHTML = "Error: " + e.message;
+      aiError.innerHTML = "❌ Error: " + e.message;
     }
 
     analyzeBtn.disabled = false;
