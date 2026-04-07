@@ -22,7 +22,7 @@ body{
   margin:20px auto;
 }
 
-textarea, input, select{
+textarea{
   width:100%;
   padding:10px;
   margin-top:10px;
@@ -56,7 +56,7 @@ button:hover{background:#16a34a;}
 
 <body>
 
-<!-- 🔥 HEADER (اتصلّح واتحط فوق) -->
+<!-- HEADER -->
 <div style="background:#020617;padding:20px;text-align:center;">
 
   <h2 style="color:#22c55e;font-weight:bold;">
@@ -74,18 +74,18 @@ button:hover{background:#16a34a;}
     </a>
 
     <a href="/risk-assessment" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
-  ⚠️ Risk Assessment
-</a>
+      ⚠️ Risk Assessment
+    </a>
 
-<a href="/investigation" style="margin:10px;color:white;text-decoration:none;">
-  🔍 Incident Investigation
-</a>
+    <a href="/investigation" style="margin:10px;color:white;text-decoration:none;">
+      🔍 Incident Investigation
+    </a>
 
   </div>
 
 </div>
 
-<!-- 🔥 CONTENT -->
+<!-- CONTENT -->
 <div class="container">
 
 <div class="card">
@@ -99,26 +99,32 @@ button:hover{background:#16a34a;}
 
 <div style="background:#1a1f35;padding:12px;border-radius:8px;margin-bottom:15px;font-size:12px;border-left:4px solid #38bdf8;">
 <b>📊 EGPC Risk Matrix Guide:</b><br>
-<b>Severity (حروف):</b> A=Negligible, B=Minor, C=Serious, D=Major, E=Catastrophic<br>
-<b>Probability (أرقام):</b> 1=Rare, 2=Unlikely, 3=Possible, 4=Likely, 5=Certain<br>
+<b>Severity:</b> A–F<br>
+<b>Probability:</b> 1–6<br>
 <b>Risk Score:</b> Severity × Probability<br>
-<b>Levels:</b> 1-3=LOW 🟢 | 4-9=MEDIUM 🟡 | 10-15=HIGH 🟠 | 16-25=CRITICAL 🔴
+<b>Levels:</b> 
+1-6 LOW 🟢 | 
+7-12 MEDIUM 🟡 | 
+13-24 HIGH 🟠 | 
+25-36 CRITICAL 🔴
 </div>
 
-  <textarea id="aiHazard" placeholder="Describe hazard..."></textarea>
+<textarea id="aiHazard" placeholder="Describe hazard..."></textarea>
 
-  <button id="analyzeBtn">Analyze</button>
+<button id="analyzeBtn">Analyze</button>
 
-  <div id="aiResult" class="result" style="display:none;"></div>
+<div id="aiResult" class="result" style="display:none;"></div>
 
-  <div id="aiError" style="color:red; display:none;">
-    AI failed ⚠
-  </div>
+<div id="aiError" style="color:red; display:none;">
+AI failed ⚠
 </div>
 
+</div>
 </div>
 
 <script>
+
+// ================= COMPANY =================
 const params = new URLSearchParams(window.location.search);
 const COMPANY = params.get("company");
 
@@ -127,6 +133,7 @@ if (!COMPANY) {
     window.location.href = currentPath + "?company=default";
 }
 
+// ================= AUTO FETCH =================
 const originalFetch = window.fetch;
 
 window.fetch = function(url, options = {}) {
@@ -140,6 +147,7 @@ window.fetch = function(url, options = {}) {
     return originalFetch(url, options);
 };
 
+// ================= NAVIGATION =================
 document.querySelectorAll("a[href^='/']").forEach(link => {
     link.addEventListener("click", function(e){
         e.preventDefault();
@@ -147,6 +155,7 @@ document.querySelectorAll("a[href^='/']").forEach(link => {
     });
 });
 
+// ================= AI =================
 document.addEventListener("DOMContentLoaded", function(){
 
   const analyzeBtn = document.getElementById("analyzeBtn");
@@ -172,58 +181,51 @@ document.addEventListener("DOMContentLoaded", function(){
     try{
       const res = await fetch("/assess_risk", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          description: hazard
-        })
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({description: hazard})
       });
 
       const data = await res.json();
 
-          if(data.error || (Array.isArray(data) && data[0].error)){
-            aiError.style.display="block";
-            aiResult.style.display="none";
-            aiError.innerHTML = data.error || data[0].error || "AI analysis failed";
-            return;
-          }
+      if(data.error || (Array.isArray(data) && data[0].error)){
+        aiError.style.display="block";
+        aiResult.style.display="none";
+        aiError.innerHTML = data.error || data[0].error || "AI failed";
+        return;
+      }
 
-          aiResult.innerHTML = data.map(h => `
+      aiResult.innerHTML = data.map(h => `
 <div style="margin-bottom:15px;padding:15px;border-radius:12px;background:#020617;border-left:6px solid ${h.color};">
 
-<b style="color:#38bdf8">Step:</b> ${h.step || "Risk Assessment"}<br><br>
+<b style="color:#38bdf8">Hazard:</b> ${h.hazard}<br><br>
 
-<b style="color:#f97316">Hazard Type:</b> ${h.hazard}<br><br>
+<b>EGPC Matrix:</b><br>
+Severity: <b>${h.severity}</b> | 
+Probability: <b>${h.probability}</b><br>
+Score: <b style="color:${h.color};font-size:16px;">${h.risk_score}</b> / 36<br><br>
 
-<b>🔍 EGPC Risk Matrix Assessment:</b><br>
-Severity (شدة): <b style="font-size:14px;">${h.severity}</b> | 
-Probability (احتمالية): <b style="font-size:14px;">${h.probability}</b><br>
-Risk Score (درجة المخاطر): <span style="font-weight:bold;color:${h.color};font-size:16px;">${h.risk_score}</span> / 25<br><br>
+<b style="color:${h.color};font-size:16px;">⚠️ ${h.risk_level}</b><br><br>
 
-<b style="color:${h.color}; font-size:16px;">⚠️ Risk Level: ${h.risk_level}</b><br><br>
-
-<b style="color:#22c55e">✅ Control Measures (Hierarchy):</b><br>
+<b style="color:#22c55e">Controls:</b><br>
 ${h.recommendation}<br><br>
 
-<b style="color:#a78bfa">📊 Residual Risk After Controls:</b><br>
+<b style="color:#a78bfa">Residual:</b><br>
 ${h.residual_level}
 
 </div>
 `).join("");
 
-        }catch(e){
-          console.log(e);
-          aiError.style.display="block";
-          aiResult.style.display="none";
-          aiError.innerHTML = "Network error: " + e.message;
-        }
+    }catch(e){
+      aiError.style.display="block";
+      aiResult.style.display="none";
+      aiError.innerHTML = "Error: " + e.message;
+    }
 
-        analyzeBtn.disabled = false;
-        analyzeBtn.innerText = "Analyze";
-      });
+    analyzeBtn.disabled = false;
+    analyzeBtn.innerText = "Analyze";
+  });
 
-    });
+});
 
 </script>
 
