@@ -94,19 +94,88 @@ button:hover{background:#16a34a;}
 <a href="{{ url_for('static', filename='risk_matrix.pdf') }}" 
    target="_blank"
    style="display:inline-block;margin-bottom:15px;color:#38bdf8;font-weight:bold;text-decoration:none;">
-   📄 View EGPC Risk Matrix
+   📄 View EGPC Risk Matrix (PDF)
 </a>
 
-<div style="background:#1a1f35;padding:12px;border-radius:8px;margin-bottom:15px;font-size:12px;border-left:4px solid #38bdf8;">
-<b>📊 EGPC Risk Matrix Guide:</b><br>
-<b>Severity:</b> A–F<br>
-<b>Probability:</b> 1–6<br>
-<b>Risk Score:</b> Severity × Probability<br>
-<b>Levels:</b> 
-1-6 LOW 🟢 | 
-7-12 MEDIUM 🟡 | 
-13-24 HIGH 🟠 | 
-25-36 CRITICAL 🔴
+<div style="background:#1a1f35;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid #38bdf8;">
+<h4 style="color:#38bdf8;margin-top:0;margin-bottom:10px;">📊 EGPC Risk Matrix Table</h4>
+
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:11px;background:#020617;border-radius:6px;">
+  <thead>
+    <tr style="background:#334155;">
+      <th style="padding:8px;border:1px solid #475569;color:#38bdf8;text-align:center;min-width:80px;">Severity<br>×<br>Probability</th>
+      <th style="padding:8px;border:1px solid #475569;color:#22c55e;text-align:center;">1<br>(Rare)</th>
+      <th style="padding:8px;border:1px solid #475569;color:#84cc16;text-align:center;">2<br>(Unlikely)</th>
+      <th style="padding:8px;border:1px solid #475569;color:#eab308;text-align:center;">3<br>(Possible)</th>
+      <th style="padding:8px;border:1px solid #475569;color:#f97316;text-align:center;">4<br>(Likely)</th>
+      <th style="padding:8px;border:1px solid #475569;color:#ef4444;text-align:center;">5<br>(Very Likely)</th>
+      <th style="padding:8px;border:1px solid #475569;color:#dc2626;text-align:center;">6<br>(Certain)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:8px;border:1px solid #475569;color:#dc2626;text-align:center;font-weight:bold;background:#7f1d1d;">A<br>(Catastrophic)</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">6<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">12<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">18<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">24<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">30<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">36<br>🔴 CRITICAL</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border:1px solid #475569;color:#ef4444;text-align:center;font-weight:bold;background:#991b1b;">B<br>(Major)</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">5<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#dc2626;color:white;font-weight:bold;">10<br>🔴 CRITICAL</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">15<br>🟠 HIGH</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">20<br>🟠 HIGH</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">25<br>🟠 HIGH</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">30<br>🟠 HIGH</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border:1px solid #475569;color:#f97316;text-align:center;font-weight:bold;background:#c2410c;">C<br>(Serious)</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">4<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">8<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">12<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">16<br>🟠 HIGH</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">20<br>🟠 HIGH</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">24<br>🟠 HIGH</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border:1px solid #475569;color:#eab308;text-align:center;font-weight:bold;background:#a16207;">D<br>(Moderate)</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">3<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">6<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">9<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">12<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">15<br>🟠 HIGH</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#f97316;color:white;font-weight:bold;">18<br>🟠 HIGH</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border:1px solid #475569;color:#84cc16;text-align:center;font-weight:bold;background:#4d7c0f;">E<br>(Minor)</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">2<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">4<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">6<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">8<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">10<br>🟡 MEDIUM</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#eab308;color:black;font-weight:bold;">12<br>🟡 MEDIUM</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border:1px solid #475569;color:#22c55e;text-align:center;font-weight:bold;background:#15803d;">F<br>(Negligible)</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">1<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">2<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">3<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">4<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">5<br>🟢 LOW</td>
+      <td style="padding:8px;border:1px solid #475569;text-align:center;background:#22c55e;color:white;font-weight:bold;">6<br>🟢 LOW</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div style="margin-top:10px;font-size:11px;color:#94a3b8;">
+<b>Risk Levels:</b> 🟢 LOW (1-6) | 🟡 MEDIUM (7-12) | 🟠 HIGH (13-24) | 🔴 CRITICAL (25-36)<br>
+<b>Formula:</b> Risk Score = Severity Value × Probability Value
+</div>
 </div>
 
 <textarea id="aiHazard" placeholder="Describe hazard..."></textarea>

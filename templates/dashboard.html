@@ -20,6 +20,28 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
 .heatmap-container { position: relative; height: 400px; }
 .prediction-card { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 15px; }
 .classification-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 15px; padding: 20px; margin-bottom: 15px; }
+
+/* Chart container for smaller charts */
+.chart-container-small {
+    position: relative;
+    height: 150px;
+    width: 100%;
+}
+
+/* Print Styles */
+@media print {
+    body { background: white !important; }
+    .nav-tabs, .btn, button, .d-flex.justify-content-between { display: none !important; }
+    .content-card { box-shadow: none !important; border: 1px solid #ddd !important; margin-bottom: 20px !important; }
+    .card { break-inside: avoid; page-break-inside: avoid; }
+    .table { page-break-inside: auto; }
+    .table tr { page-break-inside: avoid; page-break-after: auto; }
+    h4, h5, h6 { color: black !important; page-break-after: avoid; }
+    .border-bottom { border-bottom: 2px solid #000 !important; }
+    canvas { display: none !important; } /* Hide charts in print */
+    .text-center { text-align: center; }
+    .mb-4, .mb-3 { margin-bottom: 1rem !important; }
+}
 </style>
 </head>
 
@@ -60,6 +82,9 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
   </li>
   <li class="nav-item">
     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#predictions">Predictions</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#kpi-report">📊 KPI Report</button>
   </li>
   <li class="nav-item">
     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#reports">Reports</button>
@@ -138,6 +163,134 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
 <canvas id="chart1"></canvas>
 </div>
 
+</div>
+
+<!-- ================= KPI REPORT ================= -->
+<div class="tab-pane fade" id="kpi-report">
+<div class="content-card">
+  <!-- Print Button -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">📊 HSE KPI Performance Report</h4>
+    <button onclick="window.print()" class="btn btn-primary">
+      🖨️ Print Report
+    </button>
+  </div>
+
+  <!-- Report Header -->
+  <div class="text-center mb-4" id="report-header">
+    <h5>AI HSE Decision Support System</h5>
+    <p class="text-muted">Comprehensive Safety Performance Dashboard</p>
+    <p class="text-muted" id="report-date">Report Generated: <span id="current-date"></span></p>
+  </div>
+
+  <!-- Executive Summary -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">📈 Executive Summary</h5>
+    <div class="row" id="executive-summary">
+      <!-- Summary cards will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- KPI Dashboard -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">🎯 Key Performance Indicators</h5>
+    <div class="row" id="kpi-dashboard">
+      <!-- KPI cards will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Risk Analysis -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">⚠️ Risk Analysis Summary</h5>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card border-warning mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-warning">🔥 High Risk Incidents</h6>
+            <h3 class="text-warning" id="high-risk-count">0</h3>
+            <p class="card-text small">Incidents with risk score ≥ 15</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-info mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-info">📊 Average Risk Score</h6>
+            <h3 class="text-info" id="avg-risk-score">0</h3>
+            <p class="card-text small">Overall risk assessment average</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Incident Classification -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">🏷️ Incident Classification Breakdown</h5>
+    <div class="row" id="incident-breakdown">
+      <!-- Classification cards will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Location Performance -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">📍 Location Performance Analysis</h5>
+    <div id="location-performance">
+      <!-- Location table will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Root Cause Analysis -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">🔍 Root Cause Analysis</h5>
+    <div id="root-cause-summary">
+      <!-- Root cause summary will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Recommendations Summary -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">💡 Key Recommendations</h5>
+    <div id="recommendations-summary">
+      <!-- Recommendations will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="mb-4">
+    <h5 class="text-primary border-bottom pb-2">📊 Performance Charts</h5>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-title">Incident Trend (Last 30 Days)</h6>
+            <div class="chart-container-small">
+              <canvas id="incident-trend-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-title">Risk Distribution</h6>
+            <div class="chart-container-small">
+              <canvas id="risk-distribution-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Footer -->
+  <div class="text-center mt-5 pt-3 border-top">
+    <p class="text-muted small">
+      This report was generated automatically by the AI HSE Decision Support System<br>
+      For questions or concerns, please contact the HSE Department
+    </p>
+  </div>
+</div>
 </div>
 
 <!-- ================= REPORTS ================= -->
@@ -566,8 +719,297 @@ let data = await res.json();
         `).join('');
     }
 
+    // ================= KPI REPORT POPULATION =================
+    populateKPIReport(data);
+
 } catch(e) {
     console.error("LOAD ERROR:", e);
+}
+
+function populateKPIReport(data) {
+    // Set current date
+    document.getElementById("current-date").innerText = new Date().toLocaleDateString();
+
+    // Executive Summary
+    const total = data.length;
+    const observations = data.filter(x => x.event === "Observation").length;
+    const nearMisses = data.filter(x => x.event === "Near Miss").length;
+    const incidents = data.filter(x => x.event === "Incident").length;
+    const highRisk = data.filter(x => (parseInt(x.risk_score)||0) >= 15).length;
+    const avgRisk = total > 0 ? Math.round(data.reduce((a,b)=>a+(parseInt(b.risk_score)||0),0)/total) : 0;
+    const locations = new Set(data.map(x => x.location)).size;
+
+    document.getElementById("executive-summary").innerHTML = `
+        <div class="col-md-3">
+            <div class="card text-center border-primary">
+                <div class="card-body">
+                    <h5 class="text-primary">${total}</h5>
+                    <p class="card-text small">Total Safety Reports</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <h5 class="text-success">${observations}</h5>
+                    <p class="card-text small">Observations</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <h5 class="text-warning">${nearMisses}</h5>
+                    <p class="card-text small">Near Misses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <h5 class="text-danger">${incidents}</h5>
+                    <p class="card-text small">Incidents</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // KPI Dashboard
+    document.getElementById("kpi-dashboard").innerHTML = `
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-info">📍 Locations Monitored</h6>
+                    <h4 class="text-info">${locations}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-warning">⚠️ High Risk Alerts</h6>
+                    <h4 class="text-warning">${highRisk}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-primary">📊 Average Risk Score</h6>
+                    <h4 class="text-primary">${avgRisk}</h4>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Update risk analysis numbers
+    document.getElementById("high-risk-count").innerText = highRisk;
+    document.getElementById("avg-risk-score").innerText = avgRisk;
+
+    // Incident Classification Breakdown
+    const eventTypes = {
+        "Observation": observations,
+        "Near Miss": nearMisses,
+        "Incident": incidents
+    };
+
+    document.getElementById("incident-breakdown").innerHTML = Object.entries(eventTypes).map(([type, count]) => {
+        const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+        let color = type === "Incident" ? "danger" : type === "Near Miss" ? "warning" : "success";
+        return `
+            <div class="col-md-4">
+                <div class="card text-center border-${color}">
+                    <div class="card-body">
+                        <h6 class="card-title text-${color}">${type}</h6>
+                        <h4 class="text-${color}">${count}</h4>
+                        <p class="card-text small">${percentage}% of total</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Location Performance Analysis
+    const locationStats = {};
+    data.forEach(r => {
+        const loc = r.location || "Unknown";
+        if (!locationStats[loc]) {
+            locationStats[loc] = { total: 0, incidents: 0, nearMisses: 0, avgRisk: 0, count: 0 };
+        }
+        locationStats[loc].count++;
+        locationStats[loc].total += parseInt(r.risk_score) || 0;
+        if (r.event === "Incident") locationStats[loc].incidents++;
+        if (r.event === "Near Miss") locationStats[loc].nearMisses++;
+    });
+
+    const locationTable = Object.entries(locationStats)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 10) // Top 10 locations
+        .map(([location, stats]) => {
+            const avgRisk = stats.count > 0 ? (stats.total / stats.count).toFixed(1) : 0;
+            return `
+                <tr>
+                    <td>${location}</td>
+                    <td>${stats.count}</td>
+                    <td>${stats.incidents}</td>
+                    <td>${stats.nearMisses}</td>
+                    <td>${avgRisk}</td>
+                </tr>
+            `;
+        }).join('');
+
+    document.getElementById("location-performance").innerHTML = `
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Total Reports</th>
+                    <th>Incidents</th>
+                    <th>Near Misses</th>
+                    <th>Avg Risk Score</th>
+                </tr>
+            </thead>
+            <tbody>${locationTable}</tbody>
+        </table>
+    `;
+
+    // Root Cause Summary
+    const rootCauses = {};
+    data.forEach(r => {
+        const rc = r.root_cause || "Unspecified";
+        rootCauses[rc] = (rootCauses[rc] || 0) + 1;
+    });
+
+    const rootCauseSummary = Object.entries(rootCauses)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5) // Top 5 root causes
+        .map(([cause, count]) => {
+            const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+            return `
+                <div class="mb-2">
+                    <strong>${cause}:</strong> ${count} occurrences (${percentage}%)
+                </div>
+            `;
+        }).join('');
+
+    document.getElementById("root-cause-summary").innerHTML = rootCauseSummary || "<p>No root cause data available</p>";
+
+    // Recommendations Summary
+    const recommendations = data
+        .filter(r => r.recommendation)
+        .map(r => r.recommendation)
+        .slice(0, 5); // Top 5 recommendations
+
+    document.getElementById("recommendations-summary").innerHTML = recommendations.length > 0
+        ? recommendations.map(rec => `<li class="mb-2">${rec}</li>`).join('')
+        : "<p>No recommendations available</p>";
+
+    // Charts for KPI Report
+    createKPICharts(data);
+}
+
+function createKPICharts(data) {
+    // Incident Trend Chart (Last 30 Days)
+    const last30Days = {};
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        last30Days[dateStr] = 0;
+    }
+
+    data.forEach(r => {
+        if (r.date) {
+            const reportDate = new Date(r.date).toISOString().split('T')[0];
+            if (last30Days.hasOwnProperty(reportDate)) {
+                last30Days[reportDate]++;
+            }
+        }
+    });
+
+    const trendLabels = Object.keys(last30Days);
+    const trendData = Object.values(last30Days);
+
+    new Chart(document.getElementById("incident-trend-chart"), {
+        type: 'line',
+        data: {
+            labels: trendLabels.map(d => new Date(d).toLocaleDateString()),
+            datasets: [{
+                label: 'Daily Reports',
+                data: trendData,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                pointRadius: 2,
+                pointHoverRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxTicksLimit: 7,
+                        maxRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Risk Distribution Chart
+    const riskRanges = { 'Low (1-6)': 0, 'Medium (7-12)': 0, 'High (13-24)': 0, 'Critical (25-36)': 0 };
+    data.forEach(r => {
+        const score = parseInt(r.risk_score) || 0;
+        if (score <= 6) riskRanges['Low (1-6)']++;
+        else if (score <= 12) riskRanges['Medium (7-12)']++;
+        else if (score <= 24) riskRanges['High (13-24)']++;
+        else riskRanges['Critical (25-36)']++;
+    });
+
+    new Chart(document.getElementById("risk-distribution-chart"), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(riskRanges),
+            datasets: [{
+                data: Object.values(riskRanges),
+                backgroundColor: ['#22c55e', '#eab308', '#f97316', '#dc2626'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    bottom: 10
+                }
+            }
+        }
+    });
 }
 }
 
