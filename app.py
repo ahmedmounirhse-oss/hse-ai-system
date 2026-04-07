@@ -700,11 +700,15 @@ def register():
         username = request.form.get("username")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
+        company_name = request.form.get("company_name", "").strip()
         company = request.form.get("company", "default")
 
         # Validate input
         if not username or not password:
             return "❌ Username and password are required", 400
+
+        if not company_name:
+            return "❌ Company name is required", 400
 
         if password != confirm_password:
             return "❌ Passwords do not match", 400
@@ -715,11 +719,11 @@ def register():
         # Get or create company
         conn = get_db()
         c = conn.cursor()
-        c.execute("SELECT id FROM companies WHERE name=?", (company,))
+        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
         comp = c.fetchone()
 
         if not comp:
-            c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+            c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
             conn.commit()
             company_id = c.lastrowid
         else:
@@ -730,7 +734,7 @@ def register():
                       (username, password, company_id, 1))
             conn.commit()
             conn.close()
-            return f"✅ Admin account created successfully for {company}! You can now login."
+            return f"✅ Admin account created successfully for {company_name}! You can now login."
         except sqlite3.IntegrityError:
             conn.close()
             return "❌ Username already exists", 400
