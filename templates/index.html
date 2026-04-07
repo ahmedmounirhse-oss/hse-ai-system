@@ -164,8 +164,9 @@ document.getElementById("form").onsubmit = async function(e){
   let formData = new FormData(this);
 
   // 🔥 خزّن اسم الشركة
-  let company = formData.get("company") || "default";
-  localStorage.setItem("company", company);
+  const params = new URLSearchParams(window.location.search);
+let company = params.get("company") || "default";
+localStorage.setItem("company", company);
 
   try {
 

@@ -21,8 +21,34 @@ import base64
 import sqlite3
 
 
+import os
+import sqlite3
+
 def get_db():
-    from flask import g
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    conn = sqlite3.connect(os.path.join(BASE_DIR, 'hse.db'), timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# ================= FLASK APP =================
+print("App starting...")
+
+# ✅ إنشاء Flask app
+app = Flask(__name__)
+
+# 🔐 session config
+app.secret_key = "supersecretkey"
+
+# 🔑 admin credentials
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "5555632"
+
+print("Flask app created...")
+
+
+# ================= COMPANY MIDDLEWARE =================
+from flask import g, request
 import re
 
 def sanitize_company(name):
@@ -43,34 +69,18 @@ def get_or_create_company(db, name):
     db.commit()
     return c.lastrowid
 
+
 @app.before_request
 def attach_company():
     db = get_db()
     company_name = get_company()
     g.company_name = company_name
     g.company_id = get_or_create_company(db, company_name)
-    
-    import os
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    conn = sqlite3.connect(os.path.join(BASE_DIR, 'hse.db'), timeout=10)
-    conn.row_factory = sqlite3.Row
-    return conn
-print("App starting...")
 
-# ✅ تأكد إن الفولدر موجود مرة واحدة بس
+
+# ================= UPLOAD FOLDER =================
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# ✅ إنشاء Flask app
-app = Flask(__name__)
-# 🔐 session config
-app.secret_key = "supersecretkey"
-
-# 🔑 admin credentials
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "5555632"
-print("Flask app created...")
-
 # ---------------- DATABASE ----------------
 def init_db():
     import sqlite3
@@ -586,9 +596,11 @@ def investigation_pdf():
 @app.route('/reports')
 def reports():
     try:
+        conn = get_db()
+        c = conn.cursor()
+
         company_id = g.company_id
 
-        # 🔥 FILTER DATA BY COMPANY
         c.execute("""
         SELECT description, location, type, event, severity, risk_score, recommendation, date, image
         FROM reports
@@ -611,7 +623,7 @@ def reports():
                 "recommendation": r[6],
                 "date": r[7],
                 "image": r[8],
-                "root_cause": compute_root_cause(r[0]) if r[0] else ""  # 🔥 FIX
+                "root_cause": compute_root_cause(r[0]) if r[0] else ""
             })
 
         return jsonify(result)
