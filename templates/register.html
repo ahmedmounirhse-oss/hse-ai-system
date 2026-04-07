@@ -218,14 +218,22 @@
                 body: formData
             })
             .then(response => response.text())
-            .then(data => {
-                if (data.includes('✅')) {
-                    showSuccess(messageContainer, data);
+            .then(text => {
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    data = { success: false, message: text };
+                }
+
+                if (data.success) {
+                    showSuccess(messageContainer, data.message);
+                    const redirectCompany = data.company || '{{ company }}';
                     setTimeout(() => {
-                        window.location.href = '/login?company={{ company }}';
-                    }, 2000);
+                        window.location.href = `/login?company=${encodeURIComponent(redirectCompany)}`;
+                    }, 1500);
                 } else {
-                    showError(messageContainer, data);
+                    showError(messageContainer, data.message || '❌ Registration failed');
                 }
             })
             .catch(error => {

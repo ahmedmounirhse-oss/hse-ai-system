@@ -738,22 +738,22 @@ def register():
 
         # Validate input
         if not company_name:
-            return "❌ Company name is required", 400
+            return jsonify({"success": False, "message": "❌ Company name is required"}), 400
         
         if not username:
-            return "❌ Username is required", 400
+            return jsonify({"success": False, "message": "❌ Username is required"}), 400
         
         if not password:
-            return "❌ Password is required", 400
+            return jsonify({"success": False, "message": "❌ Password is required"}), 400
 
         if len(username) < 3:
-            return "❌ Username must be at least 3 characters", 400
+            return jsonify({"success": False, "message": "❌ Username must be at least 3 characters"}), 400
 
         if password != confirm_password:
-            return "❌ Passwords do not match", 400
+            return jsonify({"success": False, "message": "❌ Passwords do not match"}), 400
 
         if len(password) < 6:
-            return "❌ Password must be at least 6 characters", 400
+            return jsonify({"success": False, "message": "❌ Password must be at least 6 characters"}), 400
 
         # Retry logic for database locks
         max_retries = 3
@@ -778,7 +778,7 @@ def register():
                 c.execute("SELECT id FROM users WHERE username=? AND company_id=?", (username, company_id))
                 if c.fetchone():
                     conn.close()
-                    return "❌ Username already exists for this company", 400
+                    return jsonify({"success": False, "message": "❌ Username already exists for this company"}), 400
 
                 # Insert new user
                 c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
@@ -787,7 +787,11 @@ def register():
                 conn.close()
                 
                 print(f"✅ Registration successful for {username} in company {company_name}")
-                return f"✅ Admin account created successfully for {company_name}! You can now login."
+                return jsonify({
+                    "success": True,
+                    "message": f"✅ Admin account created successfully for {company_name}! You can now login.",
+                    "company": company_name
+                })
             
             except sqlite3.OperationalError as e:
                 if 'database is locked' in str(e) and attempt < max_retries - 1:
@@ -795,19 +799,19 @@ def register():
                     time.sleep(0.5 * (attempt + 1))
                     continue
                 else:
-                    return f"❌ Registration error: {str(e)}", 500
+                    return jsonify({"success": False, "message": f"❌ Registration error: {str(e)}"}), 500
             except Exception as e:
                 print(f"REGISTRATION ERROR: {e}")
                 import traceback
                 traceback.print_exc()
-                return f"❌ Registration error: {str(e)}", 500
+                return jsonify({"success": False, "message": f"❌ Registration error: {str(e)}"}), 500
             finally:
                 try:
                     conn.close()
                 except:
                     pass
 
-        return "❌ Database is busy, please try again", 500
+        return jsonify({"success": False, "message": "❌ Database is busy, please try again"}), 500
 
     company = request.args.get('company', 'default')
     return render_template("register.html", company=company)
