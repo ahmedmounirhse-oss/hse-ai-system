@@ -248,14 +248,6 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
     </div>
   </div>
 
-  <!-- Recommendations Summary -->
-  <div class="mb-4">
-    <h5 class="text-primary border-bottom pb-2">💡 Key Recommendations</h5>
-    <div id="recommendations-summary">
-      <!-- Recommendations will be populated by JavaScript -->
-    </div>
-  </div>
-
   <!-- Charts Section -->
   <div class="mb-4">
     <h5 class="text-primary border-bottom pb-2">📊 Performance Charts</h5>
@@ -893,16 +885,6 @@ function populateKPIReport(data) {
         }).join('');
 
     document.getElementById("root-cause-summary").innerHTML = rootCauseSummary || "<p>No root cause data available</p>";
-
-    // Recommendations Summary
-    const recommendations = data
-        .filter(r => r.recommendation)
-        .map(r => r.recommendation)
-        .slice(0, 5); // Top 5 recommendations
-
-    document.getElementById("recommendations-summary").innerHTML = recommendations.length > 0
-        ? recommendations.map(rec => `<li class="mb-2">${rec}</li>`).join('')
-        : "<p>No recommendations available</p>";
 
     // Charts for KPI Report
     createKPICharts(data);
