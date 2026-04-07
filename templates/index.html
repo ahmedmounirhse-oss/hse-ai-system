@@ -153,6 +153,33 @@ button{
 </div>
 
 <script>
+const params = new URLSearchParams(window.location.search);
+const COMPANY = params.get("company");
+
+if (!COMPANY) {
+    const currentPath = window.location.pathname;
+    window.location.href = currentPath + "?company=default";
+}
+
+const originalFetch = window.fetch;
+
+window.fetch = function(url, options = {}) {
+    if (typeof url === "string" && !url.includes("company=")) {
+        if (url.includes("?")) {
+            url += "&company=" + COMPANY;
+        } else {
+            url += "?company=" + COMPANY;
+        }
+    }
+    return originalFetch(url, options);
+};
+
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
+    });
+});
 
 document.getElementById("form").onsubmit = async function(e){
   e.preventDefault();
@@ -163,19 +190,9 @@ document.getElementById("form").onsubmit = async function(e){
 
   let formData = new FormData(this);
 
-  // 🔥 خزّن اسم الشركة
-  const params = new URLSearchParams(window.location.search);
-let company = params.get("company");
-
-if (!company) {
-  alert("Missing company in URL ❌");
-  return;
-}
   try {
 
-    let company = localStorage.getItem("company") || "default";
-
-    let res = await fetch(`/submit?company=${company}`,{
+    let res = await fetch('/submit',{
       method:"POST",
       body:formData
     });
@@ -232,44 +249,9 @@ ${data.justification ? data.justification : "AI analysis completed"}
   button.disabled = false;
 };
 
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        const params = new URLSearchParams(window.location.search);
-        const company = params.get("company");
-
-        if(!company){
-            alert("company missing ❌");
-            return;
-        }
-
-        window.location.href = link.getAttribute("href") + "?company=" + company;
-    });
+document.getElementById("closeBtn").addEventListener("click", function(){
+  document.getElementById("popup").style.display = "none";
 });
-// ================= AUTO COMPANY HANDLER =================
-
-// 1️⃣ جيب الشركة من URL
-const params = new URLSearchParams(window.location.search);
-const COMPANY = params.get("company");
-
-if (!COMPANY) {
-    alert("Missing company in URL ❌");
-}
-
-// 2️⃣ تعديل كل fetch تلقائيًا
-const originalFetch = window.fetch;
-
-window.fetch = function(url, options = {}) {
-    if (typeof url === "string" && !url.includes("company=")) {
-        if (url.includes("?")) {
-            url += "&company=" + COMPANY;
-        } else {
-            url += "?company=" + COMPANY;
-        }
-    }
-    return originalFetch(url, options);
-};
 
 </script>
 

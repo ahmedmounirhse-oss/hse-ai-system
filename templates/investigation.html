@@ -79,23 +79,40 @@ Run AI Investigation
 </div>
 
 <script>
-constparams = new URLSearchParams(window.location.search);
-if (!params.get("company")) {
+const params = new URLSearchParams(window.location.search);
+const COMPANY = params.get("company");
+
+if (!COMPANY) {
     const currentPath = window.location.pathname;
     window.location.href = currentPath + "?company=default";
 }
+
+const originalFetch = window.fetch;
+
+window.fetch = function(url, options = {}) {
+    if (typeof url === "string" && !url.includes("company=")) {
+        if (url.includes("?")) {
+            url += "&company=" + COMPANY;
+        } else {
+            url += "?company=" + COMPANY;
+        }
+    }
+    return originalFetch(url, options);
+};
+
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
+    });
+});
+
 let lastResult = null;
 
 // ================= LOAD REPORTS =================
 async function loadReports(){
     try {
-        const params = new URLSearchParams(window.location.search);
-const company = params.get("company");
-if(!company){
-    alert("Missing company ❌");
-    return;
-}
-let res = await fetch(`/reports?company=${company}`);
+let res = await fetch('/reports');
         let data = await res.json();
 
         document.getElementById("report-select").innerHTML =
@@ -212,51 +229,6 @@ async function downloadPDF(){
 // ================= INIT =================
 loadReports();
 
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        const params = new URLSearchParams(window.location.search);
-        const company = params.get("company");
-
-        if(!company){
-            alert("company missing ❌");
-            return;
-        }
-
-        window.location.href = link.getAttribute("href") + "?company=" + company;
-    });
-});
-// ================= AUTO COMPANY HANDLER =================
-
-// 1️⃣ جيب الشركة من URL
-const params = new URLSearchParams(window.location.search);
-const COMPANY = params.get("company");
-
-if (!COMPANY) {
-    alert("Missing company in URL ❌");
-}
-
-// 2️⃣ تعديل كل fetch تلقائيًا
-const originalFetch = window.fetch;
-
-window.fetch = function(url, options = {}) {
-    if (typeof url === "string" && !url.includes("company=")) {
-        if (url.includes("?")) {
-            url += "&company=" + COMPANY;
-        } else {
-            url += "?company=" + COMPANY;
-        }
-    }
-    return originalFetch(url, options);
-};
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
-    });
-});
 </script>
 
 </body>

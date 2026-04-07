@@ -73,11 +73,11 @@ button:hover{background:#16a34a;}
       📊 Dashboard
     </a>
 
-    <a href="#" onclick="goPage('/risk-assessment')" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
+    <a href="/risk-assessment" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
   ⚠️ Risk Assessment
 </a>
 
-<a href="#" onclick="goPage('/investigation')" style="margin:10px;color:white;text-decoration:none;">
+<a href="/investigation" style="margin:10px;color:white;text-decoration:none;">
   🔍 Incident Investigation
 </a>
 
@@ -89,13 +89,21 @@ button:hover{background:#16a34a;}
 <div class="container">
 
 <div class="card">
-  <h3>🤖 AI Risk Analysis</h3>
+  <h3>🤖 AI Risk Analysis (EGPC Risk Matrix)</h3>
 
 <a href="{{ url_for('static', filename='risk_matrix.pdf') }}" 
    target="_blank"
    style="display:inline-block;margin-bottom:15px;color:#38bdf8;font-weight:bold;text-decoration:none;">
    📄 View EGPC Risk Matrix
 </a>
+
+<div style="background:#1a1f35;padding:12px;border-radius:8px;margin-bottom:15px;font-size:12px;border-left:4px solid #38bdf8;">
+<b>📊 EGPC Risk Matrix Guide:</b><br>
+<b>Severity (حروف):</b> A=Negligible, B=Minor, C=Serious, D=Major, E=Catastrophic<br>
+<b>Probability (أرقام):</b> 1=Rare, 2=Unlikely, 3=Possible, 4=Likely, 5=Certain<br>
+<b>Risk Score:</b> Severity × Probability<br>
+<b>Levels:</b> 1-3=LOW 🟢 | 4-9=MEDIUM 🟡 | 10-15=HIGH 🟠 | 16-25=CRITICAL 🔴
+</div>
 
   <textarea id="aiHazard" placeholder="Describe hazard..."></textarea>
 
@@ -111,11 +119,34 @@ button:hover{background:#16a34a;}
 </div>
 
 <script>
-constparams = new URLSearchParams(window.location.search);
-if (!params.get("company")) {
+const params = new URLSearchParams(window.location.search);
+const COMPANY = params.get("company");
+
+if (!COMPANY) {
     const currentPath = window.location.pathname;
     window.location.href = currentPath + "?company=default";
 }
+
+const originalFetch = window.fetch;
+
+window.fetch = function(url, options = {}) {
+    if (typeof url === "string" && !url.includes("company=")) {
+        if (url.includes("?")) {
+            url += "&company=" + COMPANY;
+        } else {
+            url += "?company=" + COMPANY;
+        }
+    }
+    return originalFetch(url, options);
+};
+
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
+    });
+});
+
 document.addEventListener("DOMContentLoaded", function(){
 
   const analyzeBtn = document.getElementById("analyzeBtn");
@@ -151,101 +182,49 @@ document.addEventListener("DOMContentLoaded", function(){
 
       const data = await res.json();
 
-      if(data.error){
-        aiError.style.display="block";
-        aiResult.style.display="none";
-        return;
-      }
+          if(data.error || (Array.isArray(data) && data[0].error)){
+            aiError.style.display="block";
+            aiResult.style.display="none";
+            aiError.innerHTML = data.error || data[0].error || "AI analysis failed";
+            return;
+          }
 
-      aiResult.innerHTML = data.map(h => `
+          aiResult.innerHTML = data.map(h => `
 <div style="margin-bottom:15px;padding:15px;border-radius:12px;background:#020617;border-left:6px solid ${h.color};">
 
-<b style="color:#38bdf8">Step:</b> ${h.step || "General Task"}<br><br>
+<b style="color:#38bdf8">Step:</b> ${h.step || "Risk Assessment"}<br><br>
 
-<b style="color:#f97316">Hazard:</b> ${h.hazard}<br><br>
+<b style="color:#f97316">Hazard Type:</b> ${h.hazard}<br><br>
 
-<b>Severity:</b> ${h.severity} | 
-<b>Probability:</b> ${h.probability}<br><br>
+<b>🔍 EGPC Risk Matrix Assessment:</b><br>
+Severity (شدة): <b style="font-size:14px;">${h.severity}</b> | 
+Probability (احتمالية): <b style="font-size:14px;">${h.probability}</b><br>
+Risk Score (درجة المخاطر): <span style="font-weight:bold;color:${h.color};font-size:16px;">${h.risk_score}</span> / 25<br><br>
 
-<b style="color:${h.color}">Initial Risk:</b><br>
-Score: ${h.risk_score} | Level: ${h.risk_level}<br><br>
+<b style="color:${h.color}; font-size:16px;">⚠️ Risk Level: ${h.risk_level}</b><br><br>
 
-<b style="color:#22c55e">Control Measures:</b><br>
+<b style="color:#22c55e">✅ Control Measures (Hierarchy):</b><br>
 ${h.recommendation}<br><br>
 
-<b style="color:#a78bfa">After Control:</b><br>
-Level: ${h.residual_level}
+<b style="color:#a78bfa">📊 Residual Risk After Controls:</b><br>
+${h.residual_level}
 
 </div>
 `).join("");
 
-    }catch(e){
-      console.log(e);
-      aiError.style.display="block";
-      aiResult.style.display="none";
-    }
-
-    analyzeBtn.disabled = false;
-    analyzeBtn.innerText = "Analyze";
-  });
-
-});
-function goPage(path){
-    const params = new URLSearchParams(window.location.search);
-    const company = params.get("company");
-
-    if(!company){
-        alert("Missing company ❌");
-        return;
-    }
-
-    window.location.href = `${path}?company=${company}`;
-}
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        const params = new URLSearchParams(window.location.search);
-        const company = params.get("company");
-
-        if(!company){
-            alert("company missing ❌");
-            return;
+        }catch(e){
+          console.log(e);
+          aiError.style.display="block";
+          aiResult.style.display="none";
+          aiError.innerHTML = "Network error: " + e.message;
         }
 
-        window.location.href = link.getAttribute("href") + "?company=" + company;
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerText = "Analyze";
+      });
+
     });
-});
-// ================= AUTO COMPANY HANDLER =================
 
-// 1️⃣ جيب الشركة من URL
-const params = new URLSearchParams(window.location.search);
-const COMPANY = params.get("company");
-
-if (!COMPANY) {
-    alert("Missing company in URL ❌");
-}
-
-// 2️⃣ تعديل كل fetch تلقائيًا
-const originalFetch = window.fetch;
-
-window.fetch = function(url, options = {}) {
-    if (typeof url === "string" && !url.includes("company=")) {
-        if (url.includes("?")) {
-            url += "&company=" + COMPANY;
-        } else {
-            url += "?company=" + COMPANY;
-        }
-    }
-    return originalFetch(url, options);
-};
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
-    });
-});
 </script>
 
 </body>

@@ -31,20 +31,19 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
     🤖 AI HSE Decision Support System
   </h1>
   <div style="margin-top:10px;">
-    <a href="#" onclick="goHome()" style="color:white;margin:0 15px;text-decoration:none;">
+    <a href="/" style="color:white;margin:0 15px;text-decoration:none;">
       📋 Safety Observation & Reporting
     </a>
     <a href="/dashboard" style="color:#facc15;font-weight:bold;margin:0 15px;text-decoration:none;">
       📊 Dashboard
     </a>
-    <a href="#" onclick="goPage('/risk-assessment')" style="color:white;margin:0 15px;text-decoration:none;">
+    <a href="/risk-assessment" style="color:white;margin:0 15px;text-decoration:none;">
   ⚠️ Risk Assessment
 </a>
 
-<a href="#" onclick="goPage('/investigation')" style="color:white;margin:0 15px;text-decoration:none;">
+<a href="/investigation" style="color:white;margin:0 15px;text-decoration:none;">
   🔍 Incident Investigation
 </a>
-    </a>
     <a href="/logout" style="float:right; color:red; font-weight:bold;">
     🚪 Logout
 </a>
@@ -174,19 +173,39 @@ body { background-color: #f1f5f9; font-family: 'Segoe UI'; }
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+const params = new URLSearchParams(window.location.search);
+const COMPANY = params.get("company");
+
+if (!COMPANY) {
+    const currentPath = window.location.pathname;
+    window.location.href = currentPath + "?company=default";
+}
+
+const originalFetch = window.fetch;
+
+window.fetch = function(url, options = {}) {
+    if (typeof url === "string" && !url.includes("company=")) {
+        if (url.includes("?")) {
+            url += "&company=" + COMPANY;
+        } else {
+            url += "?company=" + COMPANY;
+        }
+    }
+    return originalFetch(url, options);
+};
+
+document.querySelectorAll("a[href^='/']").forEach(link => {
+    link.addEventListener("click", function(e){
+        e.preventDefault();
+        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
+    });
+});
+
 let chart, heatmapChart;
 
 async function load(){
 try {
-const params = new URLSearchParams(window.location.search);
-const company = params.get("company");
-
-if (!company) {
-    alert("Missing company in URL ❌");
-    throw new Error("No company");
-}
-localStorage.setItem("company", company);;
-let res = await fetch(`/reports?company=${company}`);
+let res = await fetch('/reports');
 let data = await res.json();
 
     // ================= KPI =================
@@ -593,74 +612,17 @@ async function loadManagementDecisions() {
     } catch(e) {
         console.error("Decision Load Error:", e);
     }
-    function goHome(){
-    const params = new URLSearchParams(window.location.search);
-    const company = params.get("company");
-
-    if(!company){
-        alert("Missing company ❌");
-        return;
-    }
-
-    window.location.href = `/?company=${company}`;
 }
-function goPage(path){
-    const params = new URLSearchParams(window.location.search);
-    const company = params.get("company");
 
-    if(!company){
-        alert("Missing company ❌");
-        return;
-    }
-
-    window.location.href = path + "?company=" + company;
-}
-}
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        const params = new URLSearchParams(window.location.search);
-        const company = params.get("company");
-
-        if(!company){
-            alert("company missing ❌");
-            return;
+document.addEventListener("DOMContentLoaded", load);
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function (event) {
+        if (event.target.getAttribute("data-bs-target") === "#management") {
+            loadManagementDecisions();
         }
-
-        window.location.href = link.getAttribute("href") + "?company=" + company;
     });
 });
-// ================= AUTO COMPANY HANDLER =================
 
-// 1️⃣ جيب الشركة من URL
-const params = new URLSearchParams(window.location.search);
-const COMPANY = params.get("company");
-
-if (!COMPANY) {
-    alert("Missing company in URL ❌");
-}
-
-// 2️⃣ تعديل كل fetch تلقائيًا
-const originalFetch = window.fetch;
-
-window.fetch = function(url, options = {}) {
-    if (typeof url === "string" && !url.includes("company=")) {
-        if (url.includes("?")) {
-            url += "&company=" + COMPANY;
-        } else {
-            url += "?company=" + COMPANY;
-        }
-    }
-    return originalFetch(url, options);
-};
-document.querySelectorAll("a[href^='/']").forEach(link => {
-    link.addEventListener("click", function(e){
-        e.preventDefault();
-
-        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
-    });
-});
 </script>
 
 </body>

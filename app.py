@@ -107,9 +107,21 @@ CREATE TABLE IF NOT EXISTS reports (
     name TEXT,
     image TEXT,
     date TEXT,
-    company_id INTEGER
+    company_id INTEGER,
+    root_cause TEXT,
+    hazard_class TEXT
 )
 """)
+    
+    # Add missing columns if they don't exist
+    c.execute("PRAGMA table_info(reports)")
+    columns = [col[1] for col in c.fetchall()]
+    
+    if 'root_cause' not in columns:
+        c.execute("ALTER TABLE reports ADD COLUMN root_cause TEXT")
+    if 'hazard_class' not in columns:
+        c.execute("ALTER TABLE reports ADD COLUMN hazard_class TEXT")
+    
     c.execute("""
 CREATE TABLE IF NOT EXISTS companies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -602,7 +614,7 @@ def reports():
         company_id = g.company_id
 
         c.execute("""
-        SELECT description, location, type, event, severity, risk_score, recommendation, date, image
+        SELECT description, location, type, event, severity, risk_score, recommendation, date, image, root_cause
         FROM reports
         WHERE company_id=?
         ORDER BY date DESC
@@ -623,7 +635,7 @@ def reports():
                 "recommendation": r[6],
                 "date": r[7],
                 "image": r[8],
-                "root_cause": compute_root_cause(r[0]) if r[0] else ""
+                "root_cause": r[9] if r[9] else compute_root_cause(r[0])
             })
 
         return jsonify(result)
@@ -665,21 +677,189 @@ def register():
     return jsonify({"message": "Registered successfully"})
 
 
+def analyze_with_gpt(hazard_desc):
+    """
+    Analyze hazard using EGPC Risk Matrix methodology
+    Severity: A, B, C, D, E (letters)
+    Probability: 1, 2, 3, 4, 5 (numbers)
+    """
+    if not client:
+        return [{"step": "Error", "hazard": "N/A", "severity": "A", "probability": "1", "risk_score": 1, "risk_level": "LOW", "color": "#28a745", "recommendation": "AI client not initialized", "residual_level": "A"}]
+
+    prompt = f"""
+You are a Senior HSE Risk Assessment Engineer following EGPC (Egyptian General Petroleum Corporation) standards and ISO 45001.
+
+Analyze this hazard using the EGPC Risk Matrix:
+
+SEVERITY (حروف - Letters):
+- A: Negligible (No injury or minor first aid)
+- B: Minor (Minor injury, temporary disability)
+- C: Serious (Serious injury, hospitalization)
+- D: Major (Permanent disability or multiple injuries)
+- E: Catastrophic (Fatality or multiple fatalities)
+
+PROBABILITY (أرقام - Numbers):
+- 1: Rare (< 1% probability)
+- 2: Unlikely (1-10% probability)
+- 3: Possible (10-30% probability)
+- 4: Likely (30-75% probability)
+- 5: Certain (> 75% probability)
+
+Risk Score Mapping:
+A1=1, A2=2, A3=3, A4=4, A5=5
+B1=2, B2=4, B3=6, B4=8, B5=10
+C1=3, C2=6, C3=9, C4=12, C5=15
+D1=4, D2=8, D3=12, D4=16, D5=20
+E1=5, E2=10, E3=15, E4=20, E5=25
+
+Risk Level:
+1-3: LOW | 4-9: MEDIUM | 10-15: HIGH | 16-25: CRITICAL
+
+Hazard to Analyze:
+{hazard_desc}
+
+Return EXACTLY this JSON:
+
+[
+{{
+    "step": "Hazard Assessment",
+    "hazard": "Type of hazard",
+    "severity": "A or B or C or D or E",
+    "probability": "1 or 2 or 3 or 4 or 5",
+    "risk_score": <calculated number>,
+    "risk_level": "LOW / MEDIUM / HIGH / CRITICAL",
+    "color": "#28a745 (LOW) / #ffc107 (MEDIUM) / #fd7e14 (HIGH) / #dc3545 (CRITICAL)",
+    "recommendation": "Specific control measures",
+    "residual_level": "A or B or C or D or E"
+}}
+]
+
+STRICT RULES:
+- Severity MUST be: A, B, C, D, or E (letters only)
+- Probability MUST be: 1, 2, 3, 4, or 5 (numbers only)
+- Use the risk score mapping table above
+- Return ONLY valid JSON array
+"""
+
+    txt = ""
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=600
+        )
+
+        txt = res.choices[0].message.content.strip()
+
+        if not txt:
+            print("AI EMPTY RESPONSE")
+            return [{"step": "Error", "hazard": "Empty response", "severity": "A", "probability": "1", "risk_score": 1, "risk_level": "LOW", "color": "#28a745", "recommendation": "AI returned empty response", "residual_level": "A"}]
+
+        # Clean JSON markdown
+        if "```json" in txt:
+            txt = txt.split("```json")[1]
+        if "```" in txt:
+            txt = txt.split("```")[0]
+        
+        txt = txt.strip()
+
+        # Extract JSON array
+        import re
+        match = re.search(r'\[.*\]', txt, re.DOTALL)
+        if match:
+            txt = match.group()
+        
+        result = json.loads(txt)
+
+        # Ensure it's an array
+        if isinstance(result, dict):
+            result = [result]
+        elif not isinstance(result, list):
+            result = [result]
+
+        # Normalize response
+        for item in result:
+            # Ensure severity is uppercase letter
+            if 'severity' in item:
+                sev = str(item['severity']).upper()
+                if sev not in ['A', 'B', 'C', 'D', 'E']:
+                    sev = 'C'  # Default to Serious
+                item['severity'] = sev
+            
+            # Ensure probability is 1-5
+            if 'probability' in item:
+                try:
+                    prob = int(str(item['probability']))
+                    item['probability'] = str(max(1, min(5, prob)))
+                except:
+                    item['probability'] = '3'
+            
+            # Calculate risk score
+            if 'severity' in item and 'probability' in item:
+                sev_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+                sev_val = sev_map.get(item['severity'], 3)
+                prob_val = int(item['probability'])
+                item['risk_score'] = sev_val * prob_val
+
+        return result
+
+    except json.JSONDecodeError as e:
+        print(f"JSON PARSE ERROR: {e}")
+        print(f"Response: {txt[:300]}")
+        return [{"step": "Error", "hazard": "JSON error", "severity": "A", "probability": "1", "risk_score": 1, "risk_level": "LOW", "color": "#28a745", "recommendation": f"Parse error: {str(e)}", "residual_level": "A"}]
+    
+    except Exception as e:
+        print(f"ASSESS_RISK ERROR: {type(e).__name__}: {e}")
+        return [{"step": "Error", "hazard": "Analysis failed", "severity": "A", "probability": "1", "risk_score": 1, "risk_level": "LOW", "color": "#28a745", "recommendation": f"Error: {str(e)}", "residual_level": "A"}]
+
+
 @app.route('/assess_risk', methods=['POST'])
 def assess_risk():
 
     data = request.get_json()
-    desc = data.get("description", "")
+    desc = data.get("description", "").strip()
 
-    if not desc:
-        return jsonify({"error": "No description"}), 400
+    if not desc or len(desc) < 5:
+        return jsonify([{"error": "Description too short", "step": "Error", "hazard": "Invalid input", "severity": "A", "probability": "1", "risk_score": 0, "risk_level": "LOW", "color": "#28a745", "recommendation": "Please provide a longer description", "residual_level": "A"}]), 400
 
     try:
         result = analyze_with_gpt(desc)
+        
+        # Ensure we always return an array
+        if not isinstance(result, list):
+            result = [result]
+        
+        # Validate and normalize the response
+        for item in result:
+            # Ensure severity is letter
+            if 'severity' in item:
+                sev = str(item['severity']).upper()
+                if sev not in ['A', 'B', 'C', 'D', 'E']:
+                    sev = 'C'
+                item['severity'] = sev
+            
+            # Ensure probability is 1-5
+            if 'probability' in item:
+                try:
+                    prob = int(str(item['probability']))
+                    item['probability'] = str(max(1, min(5, prob)))
+                except:
+                    item['probability'] = '3'
+            
+            # Ensure risk_score is 1-25
+            if 'risk_score' in item:
+                try:
+                    item['risk_score'] = int(item['risk_score'])
+                    item['risk_score'] = max(1, min(25, item['risk_score']))
+                except:
+                    item['risk_score'] = 9
+        
         return jsonify(result)
 
     except Exception as e:
-        return jsonify({"error": "AI failed"}), 500
+        print(f"ASSESS_RISK ROUTE ERROR: {e}")
+        return jsonify([{"error": str(e), "step": "Error", "hazard": "Processing failed", "severity": "A", "probability": "1", "risk_score": 0, "risk_level": "LOW", "color": "#28a745", "recommendation": "Risk assessment could not be completed", "residual_level": "A"}]), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -787,12 +967,14 @@ def submit():
 
             # COMPANY
             company_id = g.company_id
+            
+            root_cause = ai.get("root_cause", "") if ai else ""
 
             # INSERT
             c.execute("""
             INSERT INTO reports 
-            (description, location, type, event, severity, risk_score, recommendation, emp_id, date, image, company_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (description, location, type, event, severity, risk_score, recommendation, emp_id, date, image, company_id, root_cause, hazard_class)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 desc,
                 loc,
@@ -804,7 +986,9 @@ def submit():
                 emp_id,
                 datetime.now().strftime("%Y-%m-%d"),
                 image_path,
-                company_id
+                company_id,
+                root_cause,
+                hazard
             ))
 
             conn.commit()
