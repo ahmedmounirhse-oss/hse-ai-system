@@ -22,7 +22,39 @@ import sqlite3
 
 
 def get_db():
-    return sqlite3.connect('hse.db', timeout=10)
+    from flask import g
+import re
+
+def sanitize_company(name):
+    return re.sub(r'[^a-zA-Z0-9_-]', '', (name or "default").lower())
+
+def get_company():
+    return sanitize_company(request.args.get("company"))
+
+def get_or_create_company(db, name):
+    c = db.cursor()
+    c.execute("SELECT id FROM companies WHERE name=?", (name,))
+    row = c.fetchone()
+
+    if row:
+        return row[0]
+
+    c.execute("INSERT INTO companies (name) VALUES (?)", (name,))
+    db.commit()
+    return c.lastrowid
+
+@app.before_request
+def attach_company():
+    db = get_db()
+    company_name = get_company()
+    g.company_name = company_name
+    g.company_id = get_or_create_company(db, company_name)
+    
+    import os
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    conn = sqlite3.connect(os.path.join(BASE_DIR, 'hse.db'), timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
 print("App starting...")
 
 # ✅ تأكد إن الفولدر موجود مرة واحدة بس
@@ -52,22 +84,28 @@ def init_db():
 
     # reports table
     c.execute("""
-        CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            description TEXT,
-            location TEXT,
-            type TEXT,
-            event TEXT,
-            severity TEXT,
-            risk_score INTEGER,
-            recommendation TEXT,
-            emp_id TEXT,
-            name TEXT,
-            image TEXT,
-            date TEXT
-        )
-    """)
-
+CREATE TABLE IF NOT EXISTS reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    description TEXT,
+    location TEXT,
+    type TEXT,
+    event TEXT,
+    severity TEXT,
+    risk_score INTEGER,
+    recommendation TEXT,
+    emp_id TEXT,
+    name TEXT,
+    image TEXT,
+    date TEXT,
+    company_id INTEGER
+)
+""")
+    c.execute("""
+CREATE TABLE IF NOT EXISTS companies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE
+)
+""")
     # users table
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -102,7 +140,7 @@ else:
 # ---------------- ADD POINTS ----------------
 def add_points(emp_id, name, points):
     try:
-        conn = sqlite3.connect('hse.db', timeout=10)
+        conn = get_db()
         c = conn.cursor()
 
         # تأكد إن المستخدم موجود
@@ -464,10 +502,14 @@ def investigation():
 @app.route('/generate_pdf')
 def generate_pdf():
 
-    conn = sqlite3.connect('hse.db', timeout=10)
+    conn = get_db()
     c = conn.cursor()
 
-    c.execute("SELECT description, location, severity, risk_score FROM reports")
+    c.execute("""
+SELECT description, location, severity, risk_score 
+FROM reports
+WHERE company_id=?
+""", (g.company_id,))
 
     data = c.fetchall()
     conn.close()
@@ -544,20 +586,7 @@ def investigation_pdf():
 @app.route('/reports')
 def reports():
     try:
-        company_name = request.args.get("company") or "default"
-
-        conn = sqlite3.connect('hse.db', timeout=10)
-        c = conn.cursor()
-
-        # get company id
-        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
-        company = c.fetchone()
-
-        if not company:
-            conn.close()   # 🔥 FIX مهم
-            return jsonify([])
-
-        company_id = company[0]
+        company_id = g.company_id
 
         # 🔥 FILTER DATA BY COMPANY
         c.execute("""
@@ -599,7 +628,7 @@ def register():
     password = data.get("password")
     company = data.get("company")
 
-    conn = sqlite3.connect('hse.db', timeout=10)
+    conn = get_db()
     c = conn.cursor()
 
     # create or get company
@@ -643,12 +672,8 @@ def assess_risk():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        data = request.get_json()
-
-        data = request.get_json()
-
-        username = data.get("username")
-        password = data.get("password")
+        username = request.form.get("username")
+        password = request.form.get("password")
 
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['admin'] = True
@@ -676,7 +701,7 @@ def submit():
         loc = request.form.get('location')
         emp_id = request.form.get('emp')
         name = request.form.get('name')
-        company_name = "wotech"
+        
 
         if not loc or not emp_id or not name:
             return jsonify({"error": "Missing data"}), 400
@@ -745,19 +770,11 @@ def submit():
 
         # ================= DB (FIXED) =================
         try:
-            conn = sqlite3.connect('hse.db', timeout=10)
+            conn = get_db()
             c = conn.cursor()
 
             # COMPANY
-            c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
-            company = c.fetchone()
-
-            if company:
-                company_id = company[0]
-            else:
-                c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
-                conn.commit()
-                company_id = c.lastrowid
+            company_id = g.company_id
 
             # INSERT
             c.execute("""
@@ -853,11 +870,15 @@ def decision_engine():
     """Get strategic decisions and recommendations"""
     print("=== DECISION ENGINE ROUTE HIT ===")
     try:
-        conn = sqlite3.connect('hse.db', timeout=10)
+        conn = get_db()
         c = conn.cursor()
         
         # Get all reports
-        c.execute("SELECT severity, type, event, type, risk_score FROM reports")
+        c.execute("""
+        SELECT severity, type, event, type, risk_score 
+        FROM reports
+        WHERE company_id=?
+        """, (g.company_id,))
         reports = c.fetchall()
         conn.close()
         
@@ -988,7 +1009,7 @@ def decision_engine():
 @app.route('/leaderboard')
 def leaderboard():
     try:
-        conn = sqlite3.connect('hse.db', timeout=10)
+        conn = get_db()
         c = conn.cursor()
 
         # ❌ امسح sample data نهائي

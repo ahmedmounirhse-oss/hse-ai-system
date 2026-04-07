@@ -134,7 +134,7 @@ button{
 
 <input type="file" name="image" accept="image/*">
 
-<input type="text" name="company" placeholder="🏢 Company Name" required>
+
 
 <button type="submit" id="submitBtn">Submit Report</button>
 
@@ -169,7 +169,9 @@ document.getElementById("form").onsubmit = async function(e){
 
   try {
 
-    let res = await fetch("/submit",{
+    let company = localStorage.getItem("company") || "default";
+
+    let res = await fetch(`/submit?company=${company}`,{
       method:"POST",
       body:formData
     });
@@ -189,11 +191,11 @@ document.getElementById("form").onsubmit = async function(e){
     <h3>🤖 AI Analysis</h3>
 
     <div style="background:#022c22;padding:12px;border-radius:10px;margin-bottom:10px;">
-    ${data.message_ar ? data.message_ar : "شكراً لمشاركتك 👏"}
+    ${data.message_ar ? data.message_ar : "شكراً لمشاركتك تم اضافة 10 نقاط الى رصيدك فى المنافسة على جائزة رجل السلامة لهذا الشهر 👏"}
     </div>
 
     <div style="background:#1e293b;padding:12px;border-radius:10px;margin-bottom:10px;">
-    ${data.message_en ? data.message_en : "Thank you 👏"}
+    ${data.message_en ? data.message_en : "Thank you 👏 10 points have been added to your score for this month's Safety Award competition"}
     </div>
 
     <hr>
