@@ -85,7 +85,10 @@ let lastResult = null;
 // ================= LOAD REPORTS =================
 async function loadReports(){
     try {
-        let res = await fetch('/reports');
+        const params = new URLSearchParams(window.location.search);
+const company = params.get("company");
+
+let res = await fetch(`/reports?company=${company}`);
         let data = await res.json();
 
         document.getElementById("report-select").innerHTML =
@@ -209,7 +212,12 @@ document.querySelectorAll("a[href^='/']").forEach(link => {
         const params = new URLSearchParams(window.location.search);
         const company = params.get("company");
 
-        window.location.href = this.getAttribute("href") + "?company=" + company;
+        if(!company){
+            alert("company missing ❌");
+            return;
+        }
+
+        window.location.href = link.getAttribute("href") + "?company=" + company;
     });
 });
 </script>

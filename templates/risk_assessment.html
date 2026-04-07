@@ -73,13 +73,13 @@ button:hover{background:#16a34a;}
       📊 Dashboard
     </a>
 
-    <a href="#" onclick="goPage('/risk-assessment')"></a>
-      ⚠️ Risk Assessment
-    </a>
+    <a href="#" onclick="goPage('/risk-assessment')" style="margin:10px;color:#facc15;font-weight:bold;text-decoration:none;">
+  ⚠️ Risk Assessment
+</a>
 
-    <a href="#" onclick="goPage('/investigation')"></a>
-      🔍 Incident Investigation
-    </a>
+<a href="#" onclick="goPage('/investigation')" style="margin:10px;color:white;text-decoration:none;">
+  🔍 Incident Investigation
+</a>
 
   </div>
 
@@ -204,7 +204,12 @@ document.querySelectorAll("a[href^='/']").forEach(link => {
         const params = new URLSearchParams(window.location.search);
         const company = params.get("company");
 
-        window.location.href = this.getAttribute("href") + "?company=" + company;
+        if(!company){
+            alert("company missing ❌");
+            return;
+        }
+
+        window.location.href = link.getAttribute("href") + "?company=" + company;
     });
 });
 </script>
