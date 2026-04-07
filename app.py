@@ -697,18 +697,24 @@ def reports():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get("username")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
         company_name = request.form.get("company_name", "").strip()
         company = request.form.get("company", "default")
 
         # Validate input
-        if not username or not password:
-            return "❌ Username and password are required", 400
-
         if not company_name:
             return "❌ Company name is required", 400
+        
+        if not username:
+            return "❌ Username is required", 400
+        
+        if not password:
+            return "❌ Password is required", 400
+
+        if len(username) < 3:
+            return "❌ Username must be at least 3 characters", 400
 
         if password != confirm_password:
             return "❌ Passwords do not match", 400
@@ -716,28 +722,36 @@ def register():
         if len(password) < 6:
             return "❌ Password must be at least 6 characters", 400
 
-        # Get or create company
-        conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
-        comp = c.fetchone()
-
-        if not comp:
-            c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
-            conn.commit()
-            company_id = c.lastrowid
-        else:
-            company_id = comp[0]
-
         try:
+            # Get or create company
+            conn = get_db()
+            c = conn.cursor()
+            
+            c.execute("SELECT id FROM companies WHERE name=?", (company_name,))
+            comp = c.fetchone()
+
+            if not comp:
+                c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
+                conn.commit()
+                company_id = c.lastrowid
+            else:
+                company_id = comp[0]
+
+            # Check if username already exists for this company
+            c.execute("SELECT id FROM users WHERE username=? AND company_id=?", (username, company_id))
+            if c.fetchone():
+                conn.close()
+                return "❌ Username already exists for this company", 400
+
             c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
                       (username, password, company_id, 1))
             conn.commit()
             conn.close()
             return f"✅ Admin account created successfully for {company_name}! You can now login."
-        except sqlite3.IntegrityError:
-            conn.close()
-            return "❌ Username already exists", 400
+        
+        except Exception as e:
+            print(f"REGISTRATION ERROR: {e}")
+            return f"❌ Registration error: {str(e)}", 500
 
     # Get company from URL parameter
     company = request.args.get('company', 'default')
