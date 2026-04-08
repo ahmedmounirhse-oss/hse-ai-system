@@ -1069,6 +1069,8 @@ def login():
                     session['admin'] = True
                     session['company_id'] = company_id
                     session['company_name'] = company
+                    session['user_id'] = admin_user[0]
+                    session['username'] = admin_user[1]
                     print(f"✅ Login successful for {username}")
                     return redirect(f'/dashboard?company={company}')
                 else:
@@ -1541,6 +1543,51 @@ def delete_user(user_id):
     conn.close()
 
     return jsonify({"message": "User deleted successfully"})
+
+@app.route('/change-password', methods=['GET', 'POST'])
+def change_password():
+    if not session.get('admin'):
+        company = request.args.get('company', 'default')
+        return redirect(f'/login?company={company}')
+
+    company = session.get('company_name', 'default')
+    user_id = session.get('user_id')
+
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+
+        if not current_password or not new_password or not confirm_password:
+            return jsonify({"success": False, "message": "❌ All fields are required."}), 400
+
+        if len(new_password) < 6:
+            return jsonify({"success": False, "message": "❌ New password must be at least 6 characters."}), 400
+
+        if new_password != confirm_password:
+            return jsonify({"success": False, "message": "❌ Password confirmation does not match."}), 400
+
+        conn = get_db()
+        c = conn.cursor()
+        c.execute("SELECT password FROM users WHERE id=? AND company_id=? AND is_admin=1", (user_id, session.get('company_id')))
+        row = c.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify({"success": False, "message": "❌ Admin user not found."}), 404
+
+        if row[0] != current_password:
+            conn.close()
+            return jsonify({"success": False, "message": "❌ Current password is incorrect."}), 401
+
+        c.execute("UPDATE users SET password=? WHERE id=?", (new_password, user_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "✅ Password changed successfully."})
+
+    return render_template('change_password.html', company=company, username=session.get('username', 'Admin'))
+
 
 @app.route('/logout')
 def logout():
