@@ -77,6 +77,11 @@ body::before {
   <div style="margin-top:5px;">
     <span style="color:#94a3b8;font-size:14px;">Company: <strong id="company-name">Loading...</strong></span>
   </div>
+    {% if demo_mode %}
+    <div style="margin-top:8px;color:#facc15;font-size:14px;font-weight:600;">
+        Demo Mode: dashboard is open without login for explanation only.
+    </div>
+    {% endif %}
     <div style="margin-top:10px; position:relative; padding-right:150px;">
     <a href="/companies" style="color:white;margin:0 15px;text-decoration:none;">
       🏢 Companies
@@ -94,6 +99,7 @@ body::before {
 <a href="/investigation" style="color:white;margin:0 15px;text-decoration:none;">
   🔍 Incident Investigation
 </a>
+        {% if not demo_mode %}
         <div style="position:absolute; top:0; right:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
             <a href="/logout" style="color:red; font-weight:bold; text-decoration:none;">
                 🚪 Logout
@@ -102,6 +108,7 @@ body::before {
                 🔑 Change Password
             </button>
         </div>
+        {% endif %}
   </div>
 </div>
 
@@ -125,9 +132,11 @@ body::before {
   <li class="nav-item">
     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#leaderboard">Leaderboard</button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#user-management">👥 User Management</button>
-  </li>
+    {% if not demo_mode %}
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#user-management">👥 User Management</button>
+    </li>
+    {% endif %}
   <li class="nav-item">
   <button class="nav-link" data-bs-toggle="tab" data-bs-target="#management">
     🧠 Management Decisions
@@ -342,6 +351,7 @@ body::before {
 </div>
 </div>
 <!-- ================= USER MANAGEMENT ================= -->
+{% if not demo_mode %}
 <div class="tab-pane fade" id="user-management">
 <div class="content-card">
   <h5>👥 Admin User Management</h5>
@@ -379,6 +389,7 @@ body::before {
     </form>
   </div>
 </div>
+{% endif %}
 
 <!-- ================= MANAGEMENT DECISIONS ================= -->
 <div class="tab-pane fade" id="management">

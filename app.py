@@ -80,8 +80,10 @@ ALLOWED_COMPANIES = {
     "wotech": "WOTECH",
     "sidpec": "SIDPEC",
     "apc": "APC",
+    "demo": "DEMO",
 }
 DEFAULT_COMPANY = "wotech"
+DEMO_COMPANY = "demo"
 
 def sanitize_company(name):
     normalized = re.sub(r'[^a-zA-Z0-9_-]', '', (name or DEFAULT_COMPANY).lower())
@@ -218,7 +220,7 @@ init_db()
 
 # Create default admin users for companies
 def create_default_admins():
-    companies = list(ALLOWED_COMPANIES.keys())
+    companies = [name for name in ALLOWED_COMPANIES.keys() if name != DEMO_COMPANY]
 
     try:
         conn = get_db(timeout=30)
@@ -263,6 +265,181 @@ try:
     create_default_admins()
 except Exception as e:
     print(f"Warning: Could not create default admins: {e}")
+
+
+def seed_demo_reports():
+    demo_reports = [
+        {
+            "description": "Hydrocarbon leak observed from condensate pump mechanical seal during normal operation in the aromatics unit.",
+            "location": "Aromatics Unit - Pump Bay 2",
+            "type": "Mechanical Integrity",
+            "event": "Observation",
+            "severity": "MEDIUM",
+            "risk_score": 11,
+            "recommendation": "Isolate the pump, install spill containment, inspect seal condition, and expedite preventive maintenance for rotating equipment.",
+            "emp_id": "DEMO-001",
+            "name": "Area Operator",
+            "date": "2026-04-01",
+            "root_cause": "Mechanical seal degradation caused by deferred maintenance on critical rotating equipment",
+            "hazard_class": "Mechanical Integrity",
+        },
+        {
+            "description": "Portable gas detector alarmed during flange breaking activity on a propane line after incomplete depressurization.",
+            "location": "LPG Recovery Unit - Line 14P",
+            "type": "Process Safety",
+            "event": "Near Miss",
+            "severity": "HIGH",
+            "risk_score": 23,
+            "recommendation": "Stop the job immediately, re-verify isolation and depressurization, gas test the line, and review line-breaking permit controls.",
+            "emp_id": "DEMO-002",
+            "name": "Shift Supervisor",
+            "date": "2026-04-02",
+            "root_cause": "Line-breaking controls failed because residual pressure was not fully released before maintenance",
+            "hazard_class": "Process Safety",
+        },
+        {
+            "description": "Hot work was started near a solvent storage manifold before confirming removal of combustible residue from the area.",
+            "location": "Tank Farm - Solvent Manifold",
+            "type": "Fire",
+            "event": "Observation",
+            "severity": "MEDIUM",
+            "risk_score": 13,
+            "recommendation": "Suspend hot work, clean the area, repeat gas testing, and require permit issuer verification before restarting.",
+            "emp_id": "DEMO-003",
+            "name": "Permit Receiver",
+            "date": "2026-04-03",
+            "root_cause": "Permit-to-work verification was weak and failed to confirm elimination of ignition sources",
+            "hazard_class": "Fire",
+        },
+        {
+            "description": "MCC bucket was left energized and open while technicians were preparing to replace a motor starter in the polyethylene unit.",
+            "location": "Polyethylene Unit - MCC Room B",
+            "type": "Electrical",
+            "event": "Observation",
+            "severity": "HIGH",
+            "risk_score": 17,
+            "recommendation": "Apply full LOTO, close the compartment, verify zero energy state, and audit electrical isolation practices across the shift.",
+            "emp_id": "DEMO-004",
+            "name": "Electrical Technician",
+            "date": "2026-04-04",
+            "root_cause": "Electrical isolation procedure was bypassed under schedule pressure",
+            "hazard_class": "Electrical",
+        },
+        {
+            "description": "Flash fire occurred at the diesel loading gantry when a tanker driver connected grounding after opening the hatch.",
+            "location": "Truck Loading Gantry 1",
+            "type": "Fire",
+            "event": "Incident",
+            "severity": "HIGH",
+            "risk_score": 21,
+            "recommendation": "Review loading sequence, enforce pre-loading grounding checks, inspect bonding equipment, and retrain all loading operators and drivers.",
+            "emp_id": "DEMO-005",
+            "name": "Loading Operator",
+            "date": "2026-04-05",
+            "root_cause": "Static control steps were not followed before product transfer started",
+            "hazard_class": "Fire",
+        },
+        {
+            "description": "Caustic dosing tote in the water treatment area had no hazard label and secondary containment was partially filled.",
+            "location": "Utilities - Water Treatment",
+            "type": "Chemical Exposure",
+            "event": "Observation",
+            "severity": "MEDIUM",
+            "risk_score": 9,
+            "recommendation": "Relabel the tote immediately, empty the secondary containment, inspect all chemical containers, and update chemical handling registers.",
+            "emp_id": "DEMO-006",
+            "name": "Utilities Chemist",
+            "date": "2026-04-06",
+            "root_cause": "Chemical labeling and storage inspection process was inconsistently applied",
+            "hazard_class": "Chemical Exposure",
+        },
+        {
+            "description": "H2S detector alarm activated during vessel opening preparation in the sour water stripping section.",
+            "location": "Sour Water Stripper - Vessel V12",
+            "type": "Process Safety",
+            "event": "Near Miss",
+            "severity": "HIGH",
+            "risk_score": 22,
+            "recommendation": "Stop vessel entry preparation, ventilate the area, repeat atmospheric testing, and verify isolation against the blind list before work resumes.",
+            "emp_id": "DEMO-007",
+            "name": "Field Operator",
+            "date": "2026-04-07",
+            "root_cause": "Positive isolation and gas freeing were incomplete before vessel opening",
+            "hazard_class": "Process Safety",
+        },
+        {
+            "description": "Nitrogen hose routed across emergency access beside the reactor platform created a trip hazard during turnaround work.",
+            "location": "Reactor Platform - Turnaround Zone",
+            "type": "Behavioral Safety",
+            "event": "Observation",
+            "severity": "LOW",
+            "risk_score": 7,
+            "recommendation": "Reroute the hose, barricade the walkway, reinforce turnaround housekeeping checks, and assign area ownership per shift.",
+            "emp_id": "DEMO-008",
+            "name": "Turnaround Coordinator",
+            "date": "2026-04-08",
+            "root_cause": "Temporary services were installed without adequate walkway control planning",
+            "hazard_class": "Behavioral Safety",
+        },
+    ]
+
+    try:
+        conn = get_db(timeout=30)
+        c = conn.cursor()
+
+        c.execute("SELECT id FROM companies WHERE name=?", (DEMO_COMPANY,))
+        row = c.fetchone()
+        if row:
+            demo_company_id = row[0]
+        else:
+            c.execute("INSERT INTO companies (name) VALUES (?)", (DEMO_COMPANY,))
+            conn.commit()
+            demo_company_id = c.lastrowid
+
+        c.execute("SELECT COUNT(*) FROM reports WHERE company_id=?", (demo_company_id,))
+        if c.fetchone()[0] > 0:
+            conn.close()
+            return
+
+        for report in demo_reports:
+            c.execute(
+                """
+                INSERT INTO reports (
+                    description, location, type, event, severity, risk_score,
+                    recommendation, emp_id, name, image, date, company_id,
+                    root_cause, hazard_class
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    report["description"],
+                    report["location"],
+                    report["type"],
+                    report["event"],
+                    report["severity"],
+                    report["risk_score"],
+                    report["recommendation"],
+                    report["emp_id"],
+                    report["name"],
+                    None,
+                    report["date"],
+                    demo_company_id,
+                    report["root_cause"],
+                    report["hazard_class"],
+                ),
+            )
+
+        conn.commit()
+        conn.close()
+        print("Seeded demo reports successfully")
+    except Exception as e:
+        print(f"Error seeding demo reports: {e}")
+
+
+try:
+    seed_demo_reports()
+except Exception as e:
+    print(f"Warning: Could not seed demo reports: {e}")
 
 
 # ✅ تحميل API Key بشكل آمن
@@ -1039,12 +1216,18 @@ def assess_risk():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     company = sanitize_company(request.args.get('company', DEFAULT_COMPANY))
+    if company == DEMO_COMPANY:
+        return redirect(url_for('dashboard', company=DEMO_COMPANY))
+
     error = None
 
     if request.method == 'POST':
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         company = sanitize_company(request.form.get("company", DEFAULT_COMPANY))
+
+        if company == DEMO_COMPANY:
+            return redirect(url_for('dashboard', company=DEMO_COMPANY))
 
         if not username or not password:
             error = "❌ Username and password are required"
@@ -1122,6 +1305,10 @@ def companies():
 
 @app.route('/dashboard')
 def dashboard():
+    requested_company = sanitize_company(request.args.get('company', session.get('company_name', DEFAULT_COMPANY)))
+    if requested_company == DEMO_COMPANY and not session.get('admin'):
+        return render_template("dashboard.html", company=DEMO_COMPANY, demo_mode=True)
+
     if not session.get('admin'):
         company = sanitize_company(request.args.get('company', DEFAULT_COMPANY))
         return redirect(url_for('login', company=company))
@@ -1129,7 +1316,7 @@ def dashboard():
     company = sanitize_company(session.get('company_name', DEFAULT_COMPANY))
     session['company_name'] = company
     session['company_display_name'] = get_company_display_name(company)
-    return render_template("dashboard.html", company=company)
+    return render_template("dashboard.html", company=company, demo_mode=False)
 
 @app.route('/submit', methods=['POST'])
 def submit():
