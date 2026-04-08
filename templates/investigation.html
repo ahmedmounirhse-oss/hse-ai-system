@@ -118,7 +118,7 @@ const COMPANY = params.get("company");
 
 if (!COMPANY) {
     const currentPath = window.location.pathname;
-    window.location.href = currentPath + "?company=default";
+  window.location.href = currentPath + "?company=wotech";
 }
 
 const originalFetch = window.fetch;
@@ -137,7 +137,13 @@ window.fetch = function(url, options = {}) {
 document.querySelectorAll("a[href^='/']").forEach(link => {
     link.addEventListener("click", function(e){
         e.preventDefault();
-        window.location.href = this.getAttribute("href") + "?company=" + COMPANY;
+    const href = this.getAttribute("href");
+    if (href.includes("company=")) {
+      window.location.href = href;
+      return;
+    }
+    const separator = href.includes("?") ? "&" : "?";
+    window.location.href = href + separator + "company=" + COMPANY;
     });
 });
 

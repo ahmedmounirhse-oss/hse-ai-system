@@ -12,7 +12,7 @@ import sqlite3
 from datetime import datetime
 from openai import OpenAI
 from collections import Counter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import Image, SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
 from ai_engine import validate_classification, map_severity
@@ -45,8 +45,13 @@ def hash_password(password):
 def verify_password(stored_password, provided_password):
     if not stored_password:
         return False
+    if stored_password.startswith(('pbkdf2:', 'scrypt:')):
+        try:
+            return check_password_hash(stored_password, provided_password)
+        except Exception:
+            return False
     try:
-        return check_password_hash(stored_password, provided_password)
+        return stored_password == provided_password
     except Exception:
         return stored_password == provided_password
 
@@ -71,11 +76,23 @@ print("Flask app created...")
 from flask import g, request
 import re
 
+ALLOWED_COMPANIES = {
+    "wotech": "WOTECH",
+    "sidpec": "SIDPEC",
+    "apc": "APC",
+}
+DEFAULT_COMPANY = "wotech"
+
 def sanitize_company(name):
-    return re.sub(r'[^a-zA-Z0-9_-]', '', (name or "default").lower())
+    normalized = re.sub(r'[^a-zA-Z0-9_-]', '', (name or DEFAULT_COMPANY).lower())
+    return normalized if normalized in ALLOWED_COMPANIES else DEFAULT_COMPANY
+
+
+def get_company_display_name(name):
+    return ALLOWED_COMPANIES.get(sanitize_company(name), ALLOWED_COMPANIES[DEFAULT_COMPANY])
 
 def get_company():
-    return sanitize_company(request.args.get("company"))
+    return sanitize_company(request.args.get("company") or session.get('company_name'))
 
 def get_or_create_company(db, name):
     c = db.cursor()
@@ -109,7 +126,7 @@ def attach_company():
         db.close()
     except Exception as e:
         print(f"Error in attach_company: {e}")
-        g.company_name = "default"
+        g.company_name = DEFAULT_COMPANY
         g.company_id = None
 
 @app.teardown_appcontext
@@ -201,7 +218,7 @@ init_db()
 
 # Create default admin users for companies
 def create_default_admins():
-    companies = ["default", "company1", "company2", "company3", "company4"]
+    companies = list(ALLOWED_COMPANIES.keys())
 
     try:
         conn = get_db(timeout=30)
@@ -231,7 +248,7 @@ def create_default_admins():
                 if not existing_admin:
                     c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
                               (admin_username, admin_password, company_id, 1))
-                    print(f"✅ Created admin user for {company_name}: {admin_username} / {admin_password}")
+                    print(f"Created admin user for {company_name}: {admin_username} / {admin_password}")
             except Exception as e:
                 print(f"Error creating admin for {company_name}: {e}")
                 continue
@@ -252,14 +269,14 @@ except Exception as e:
 api_key = os.getenv("OPENAI_API_KEY")
 
 if not api_key:
-    print("❌ ERROR: OPENAI_API_KEY not found in .env")
+    print("ERROR: OPENAI_API_KEY not found in .env")
     client = None
 else:
     try:
         client = OpenAI(api_key=api_key)
-        print("✅ OpenAI client initialized")
+        print("OpenAI client initialized")
     except Exception as e:
-        print(f"❌ OpenAI client init failed: {e}")
+        print(f"OpenAI client init failed: {e}")
         client = None
 # ---------------- ADD POINTS ----------------
 def add_points(emp_id, name, points):
@@ -752,8 +769,8 @@ def register():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         confirm_password = request.form.get("confirm_password", "").strip()
-        company_name = request.form.get("company_name", "").strip().lower()
-        company = request.form.get("company", "default")
+        company_name = sanitize_company(request.form.get("company_name", "").strip())
+        company = sanitize_company(request.form.get("company", DEFAULT_COMPANY))
 
         # Validate input
         if not company_name:
@@ -788,10 +805,10 @@ def register():
                     c.execute("INSERT INTO companies (name) VALUES (?)", (company_name,))
                     conn.commit()
                     company_id = c.lastrowid
-                    print(f"✅ Created new company: {company_name} with ID: {company_id}")
+                    print(f"Created new company: {company_name} with ID: {company_id}")
                 else:
                     company_id = comp[0]
-                    print(f"✅ Using existing company: {company_name} with ID: {company_id}")
+                    print(f"Using existing company: {company_name} with ID: {company_id}")
 
                 # Check if username already exists
                 c.execute("SELECT id FROM users WHERE username=? AND company_id=?", (username, company_id))
@@ -806,7 +823,7 @@ def register():
                 conn.commit()
                 conn.close()
                 
-                print(f"✅ Registration successful for {username} in company {company_name}")
+                print(f"Registration successful for {username} in company {company_name}")
                 return jsonify({
                     "success": True,
                     "message": f"✅ Admin account created successfully for {company_name}! You can now login.",
@@ -833,7 +850,7 @@ def register():
 
         return jsonify({"success": False, "message": "❌ Database is busy, please try again"}), 500
 
-    company = request.args.get('company', 'default').strip().lower()
+    company = sanitize_company(request.args.get('company', DEFAULT_COMPANY))
     return render_template("register.html", company=company)
 
 
@@ -1021,13 +1038,13 @@ def assess_risk():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    company = request.args.get('company', 'default').strip().lower()
+    company = sanitize_company(request.args.get('company', DEFAULT_COMPANY))
     error = None
 
     if request.method == 'POST':
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-        company = request.form.get("company", "default").strip().lower()
+        company = sanitize_company(request.form.get("company", DEFAULT_COMPANY))
 
         if not username or not password:
             error = "❌ Username and password are required"
@@ -1065,10 +1082,11 @@ def login():
                         session['admin'] = True
                         session['company_id'] = company_id
                         session['company_name'] = company
+                        session['company_display_name'] = get_company_display_name(company)
                         session['user_id'] = admin_user[0]
                         session['username'] = admin_user[1]
-                        print(f"✅ Login successful for {username}")
-                        return redirect('/dashboard')
+                        print(f"Login successful for {username}")
+                        return redirect(url_for('dashboard', company=company))
                     else:
                         error = "❌ Wrong credentials or not an admin user"
                         break
@@ -1105,14 +1123,13 @@ def companies():
 @app.route('/dashboard')
 def dashboard():
     if not session.get('admin'):
-        company = request.args.get('company', 'default')
-    return render_template("dashboard.html", company=g.company_name)
+        company = sanitize_company(request.args.get('company', DEFAULT_COMPANY))
+        return redirect(url_for('login', company=company))
 
-    # Ensure the user has access to the requested company
-    if not session.get('company_name'):
-        return redirect('/login')
-
-    return render_template("dashboard.html", company=session.get('company_name', 'default'))
+    company = sanitize_company(session.get('company_name', DEFAULT_COMPANY))
+    session['company_name'] = company
+    session['company_display_name'] = get_company_display_name(company)
+    return render_template("dashboard.html", company=company)
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -1545,10 +1562,10 @@ def delete_user(user_id):
 @app.route('/change-password', methods=['GET', 'POST'])
 def change_password():
     if not session.get('admin'):
-        company = request.args.get('company', 'default')
+        company = sanitize_company(request.args.get('company', DEFAULT_COMPANY))
         return redirect(f'/login?company={company}')
 
-    company = session.get('company_name', 'default')
+    company = sanitize_company(session.get('company_name', DEFAULT_COMPANY))
     user_id = session.get('user_id')
 
     if request.method == 'POST':
@@ -1590,8 +1607,9 @@ def change_password():
 
 @app.route('/logout')
 def logout():
+    company = sanitize_company(session.get('company_name', request.args.get('company', DEFAULT_COMPANY)))
     session.clear()
-    return redirect('/login')
+    return redirect(url_for('login', company=company))
 
 # ================== RUN ==================
 
