@@ -131,9 +131,11 @@
             <small>Enter your admin credentials to access the dashboard</small>
         </div>
 
-        <div id="message-container"></div>
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+    {% endif %}
 
-        <form id="loginForm" onsubmit="return handleSubmit(event)">
+        <form id="loginForm" method="POST" action="/login">
             <input type="hidden" name="company" value="{{ company }}">
 
             <input id="username" name="username" placeholder="Admin Username" required><br><br>
@@ -149,52 +151,7 @@
     </div>
 
     <script>
-        function handleSubmit(event) {
-            event.preventDefault();
-            const form = document.getElementById('loginForm');
-            const messageContainer = document.getElementById('message-container');
-            
-            messageContainer.innerHTML = '';
-
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const company = form.querySelector('input[type="hidden"]').value;
-
-            if (!username || !password) {
-                showError(messageContainer, '❌ Username and password are required');
-                return false;
-            }
-
-            const formData = new FormData();
-            formData.append('username', username);
-            formData.append('password', password);
-            formData.append('company', company);
-
-            fetch('/login', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text())
-            .then(data => {
-                if (data.includes('dashboard')) {
-                    window.location.href = '/dashboard?company=' + company;
-                } else if (data.includes('❌')) {
-                    showError(messageContainer, data);
-                } else {
-                    window.location.href = '/dashboard?company=' + company;
-                }
-            })
-            .catch(error => {
-                showError(messageContainer, '❌ An error occurred: ' + error);
-            });
-
-            return false;
-        }
-
-        function showError(container, message) {
-            container.innerHTML = '<div class="error-message">' + message + '</div>';
-            container.scrollIntoView({ behavior: 'smooth' });
-        }
+        document.getElementById('username').focus();
     </script>
 </body>
 </html>

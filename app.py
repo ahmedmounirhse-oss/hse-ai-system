@@ -1001,104 +1001,105 @@ def assess_risk():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    company = request.args.get('company', 'default').strip().lower()
+    error = None
+
     if request.method == 'POST':
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         company = request.form.get("company", "default").strip().lower()
 
         if not username or not password:
-            return "❌ Username and password are required", 400
-
-        # Retry logic for database locks
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                conn = get_db(timeout=30)
-                c = conn.cursor()
-                
-                # First, try to find an admin login for this company name across all matching rows
-                c.execute(
-                    """
-                    SELECT u.id, u.username, c.id
-                    FROM users u
-                    JOIN companies c ON u.company_id = c.id
-                    WHERE lower(c.name)=? AND u.username=? AND u.password=? AND u.is_admin=1
-                    """,
-                    (company, username, password)
-                )
-                admin_user = c.fetchone()
-
-                if admin_user:
-                    company_id = admin_user[2]
-                    print(f"✅ Found matching admin user {username} for company {company} (ID: {company_id})")
-                else:
-                    c.execute("SELECT id FROM companies WHERE lower(name)=?", (company,))
-                    comp = c.fetchone()
-
-                    if not comp:
-                        c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
-                        conn.commit()
-                        company_id = c.lastrowid
-                        print(f"✅ Created new company during login: {company}")
-                    else:
-                        company_id = comp[0]
-                        print(f"✅ Found company: {company} with ID: {company_id}")
-
-                    # Check admin credentials for this company
-                    c.execute("SELECT id, username FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
-                              (username, password, company_id))
+            error = "❌ Username and password are required"
+        else:
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    conn = get_db(timeout=30)
+                    c = conn.cursor()
+                    
+                    c.execute(
+                        """
+                        SELECT u.id, u.username, c.id
+                        FROM users u
+                        JOIN companies c ON u.company_id = c.id
+                        WHERE lower(c.name)=? AND u.username=? AND u.password=? AND u.is_admin=1
+                        """,
+                        (company, username, password)
+                    )
                     admin_user = c.fetchone()
 
-                    if not admin_user:
-                        # Debug: Check if user exists but is not admin
-                        c.execute("SELECT id, is_admin FROM users WHERE username=? AND password=? AND company_id=?",
-                                  (username, password, company_id))
-                        user = c.fetchone()
-                        if user:
-                            print(f"❌ User exists but is_admin={user[1]}")
+                    if admin_user:
+                        company_id = admin_user[2]
+                        print(f"✅ Found matching admin user {username} for company {company} (ID: {company_id})")
+                    else:
+                        c.execute("SELECT id FROM companies WHERE lower(name)=?", (company,))
+                        comp = c.fetchone()
+
+                        if not comp:
+                            c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+                            conn.commit()
+                            company_id = c.lastrowid
+                            print(f"✅ Created new company during login: {company}")
                         else:
-                            print(f"❌ User not found for company {company_id}")
-                            c.execute("SELECT username, is_admin FROM users WHERE company_id=?", (company_id,))
-                            users = c.fetchall()
-                            for u in users:
-                                print(f"   - {u[0]} (is_admin={u[1]})")
-                
-                conn.close()
+                            company_id = comp[0]
+                            print(f"✅ Found company: {company} with ID: {company_id}")
 
-                if admin_user:
-                    session['admin'] = True
-                    session['company_id'] = company_id
-                    session['company_name'] = company
-                    session['user_id'] = admin_user[0]
-                    session['username'] = admin_user[1]
-                    print(f"✅ Login successful for {username}")
-                    return redirect(f'/dashboard?company={company}')
-                else:
-                    print(f"❌ Login failed for {username} on company {company}")
-                    return "❌ Wrong credentials or not an admin user", 401
-            
-            except sqlite3.OperationalError as e:
-                if 'database is locked' in str(e) and attempt < max_retries - 1:
-                    print(f"Database locked, retrying... (attempt {attempt + 1}/{max_retries})")
-                    time.sleep(0.5 * (attempt + 1))
-                    continue
-                else:
-                    return f"❌ Login error: {str(e)}", 500
-            except Exception as e:
-                print(f"LOGIN ERROR: {e}")
-                import traceback
-                traceback.print_exc()
-                return f"❌ Login error: {str(e)}", 500
-            finally:
-                try:
+                        c.execute("SELECT id, username FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
+                                  (username, password, company_id))
+                        admin_user = c.fetchone()
+
+                        if not admin_user:
+                            c.execute("SELECT id, is_admin FROM users WHERE username=? AND password=? AND company_id=?",
+                                      (username, password, company_id))
+                            user = c.fetchone()
+                            if user:
+                                print(f"❌ User exists but is_admin={user[1]}")
+                            else:
+                                print(f"❌ User not found for company {company_id}")
+                                c.execute("SELECT username, is_admin FROM users WHERE company_id=?", (company_id,))
+                                users = c.fetchall()
+                                for u in users:
+                                    print(f"   - {u[0]} (is_admin={u[1]})")
+
                     conn.close()
-                except:
-                    pass
 
-        return "❌ Database is busy, please try again", 500
+                    if admin_user:
+                        session['admin'] = True
+                        session['company_id'] = company_id
+                        session['company_name'] = company
+                        session['user_id'] = admin_user[0]
+                        session['username'] = admin_user[1]
+                        print(f"✅ Login successful for {username}")
+                        return redirect(f'/dashboard?company={company}')
+                    else:
+                        error = "❌ Wrong credentials or not an admin user"
+                        break
 
-    company = request.args.get('company', 'default').strip().lower()
-    return render_template("login.html", company=company)
+                except sqlite3.OperationalError as e:
+                    if 'database is locked' in str(e) and attempt < max_retries - 1:
+                        print(f"Database locked, retrying... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(0.5 * (attempt + 1))
+                        continue
+                    else:
+                        error = f"❌ Login error: {str(e)}"
+                        break
+                except Exception as e:
+                    print(f"LOGIN ERROR: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    error = f"❌ Login error: {str(e)}"
+                    break
+                finally:
+                    try:
+                        conn.close()
+                    except:
+                        pass
+
+            if not error and not admin_user:
+                error = "❌ Wrong credentials or not an admin user"
+
+    return render_template("login.html", company=company, error=error)
 
 @app.route('/companies')
 def companies():

@@ -127,6 +127,9 @@ body::before {
     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#user-management">👥 User Management</button>
   </li>
   <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#password-change">🔑 Change Password</button>
+  </li>
+  <li class="nav-item">
   <button class="nav-link" data-bs-toggle="tab" data-bs-target="#management">
     🧠 Management Decisions
   </button>
@@ -354,6 +357,28 @@ body::before {
     <!-- Users will be loaded here -->
   </div>
 </div>
+</div>
+
+<div class="tab-pane fade" id="password-change">
+  <div class="content-card">
+    <h5>🔑 Change Password</h5>
+    <div id="password-message"></div>
+    <form id="passwordChangeForm">
+      <div class="mb-3">
+        <label class="form-label">Current Password</label>
+        <input class="form-control" type="password" name="current_password" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">New Password</label>
+        <input class="form-control" type="password" name="new_password" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Confirm New Password</label>
+        <input class="form-control" type="password" name="confirm_password" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Save Password</button>
+    </form>
+  </div>
 </div>
 
 <!-- ================= MANAGEMENT DECISIONS ================= -->
@@ -1144,6 +1169,31 @@ async function loadUsers() {
         console.error("Users Load Error:", e);
         document.getElementById("users-list").innerHTML = "<div class='alert alert-danger'>Error loading users</div>";
     }
+}
+
+const passwordChangeForm = document.getElementById('passwordChangeForm');
+if (passwordChangeForm) {
+    passwordChangeForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const messageContainer = document.getElementById('password-message');
+        messageContainer.innerHTML = '';
+
+        const formData = new FormData(passwordChangeForm);
+        try {
+            const response = await fetch('/change-password', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            const className = result.success ? 'alert alert-success' : 'alert alert-danger';
+            messageContainer.innerHTML = `<div class="${className}">${result.message || 'An error occurred'}</div>`;
+            if (result.success) {
+                passwordChangeForm.reset();
+            }
+        } catch (err) {
+            messageContainer.innerHTML = `<div class="alert alert-danger">❌ ${err.message}</div>`;
+        }
+    });
 }
 
 function showAddUserModal() {
