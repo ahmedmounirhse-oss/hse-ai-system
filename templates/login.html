@@ -128,16 +128,15 @@
 
         <div class="company-info">
             <strong>Company:</strong> {{ company.title() }}<br>
-            <small>Enter your admin credentials to access the dashboard</small>
+            <small>Enter your company and admin credentials to access your dashboard</small>
         </div>
 
         {% if error %}
         <div class="error-message">{{ error }}</div>
-    {% endif %}
+        {% endif %}
 
         <form id="loginForm" method="POST" action="/login">
-            <input type="hidden" name="company" value="{{ company }}">
-
+            <input id="company" name="company" type="text" placeholder="Company Name" value="{{ company }}" required><br><br>
             <input id="username" name="username" placeholder="Admin Username" required><br><br>
             <input id="password" name="password" type="password" placeholder="Admin Password" required><br><br>
 
@@ -151,7 +150,7 @@
     </div>
 
     <script>
-        document.getElementById('username').focus();
+        document.getElementById('company').focus();
     </script>
 </body>
 </html>

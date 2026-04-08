@@ -2,6 +2,7 @@
 from flask import session, redirect, url_for
 from flask import Flask, render_template, request, jsonify, send_file
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
 # ✅ تحميل .env
@@ -35,6 +36,19 @@ def get_db(timeout=30):
     conn.execute("PRAGMA cache_size=10000")
     return conn
     return conn
+
+
+def hash_password(password):
+    return generate_password_hash(password)
+
+
+def verify_password(stored_password, provided_password):
+    if not stored_password:
+        return False
+    try:
+        return check_password_hash(stored_password, provided_password)
+    except Exception:
+        return stored_password == provided_password
 
 
 # ================= FLASK APP =================
@@ -81,8 +95,13 @@ def attach_company():
     # Skip for login and register routes to avoid conflicts
     if request.path in ['/login', '/register', '/companies']:
         return
-    
+
     try:
+        if session.get('admin') and session.get('company_id'):
+            g.company_name = session.get('company_name')
+            g.company_id = session.get('company_id')
+            return
+
         db = get_db()
         company_name = get_company()
         g.company_name = company_name
@@ -781,8 +800,9 @@ def register():
                     return jsonify({"success": False, "message": "❌ Username already exists for this company"}), 400
 
                 # Insert new user
+                hashed_password = hash_password(password)
                 c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
-                          (username, password, company_id, 1))
+                          (username, hashed_password, company_id, 1))
                 conn.commit()
                 conn.close()
                 
@@ -1018,49 +1038,26 @@ def login():
                     conn = get_db(timeout=30)
                     c = conn.cursor()
                     
-                    c.execute(
-                        """
-                        SELECT u.id, u.username, c.id
-                        FROM users u
-                        JOIN companies c ON u.company_id = c.id
-                        WHERE lower(c.name)=? AND u.username=? AND u.password=? AND u.is_admin=1
-                        """,
-                        (company, username, password)
-                    )
-                    admin_user = c.fetchone()
+                    c.execute("SELECT id FROM companies WHERE lower(name)=?", (company,))
+                    comp = c.fetchone()
 
-                    if admin_user:
-                        company_id = admin_user[2]
-                        print(f"✅ Found matching admin user {username} for company {company} (ID: {company_id})")
-                    else:
-                        c.execute("SELECT id FROM companies WHERE lower(name)=?", (company,))
-                        comp = c.fetchone()
+                    if not comp:
+                        error = "❌ Company not found. Please register first."
+                        break
 
-                        if not comp:
-                            c.execute("INSERT INTO companies (name) VALUES (?)", (company,))
+                    company_id = comp[0]
+                    c.execute("SELECT id, username, password FROM users WHERE username=? AND company_id=? AND is_admin=1",
+                              (username, company_id))
+                    row = c.fetchone()
+
+                    if row and verify_password(row[2], password):
+                        if not row[2].startswith('pbkdf2:'):
+                            hashed = hash_password(password)
+                            c.execute("UPDATE users SET password=? WHERE id=?", (hashed, row[0]))
                             conn.commit()
-                            company_id = c.lastrowid
-                            print(f"✅ Created new company during login: {company}")
-                        else:
-                            company_id = comp[0]
-                            print(f"✅ Found company: {company} with ID: {company_id}")
-
-                        c.execute("SELECT id, username FROM users WHERE username=? AND password=? AND company_id=? AND is_admin=1",
-                                  (username, password, company_id))
-                        admin_user = c.fetchone()
-
-                        if not admin_user:
-                            c.execute("SELECT id, is_admin FROM users WHERE username=? AND password=? AND company_id=?",
-                                      (username, password, company_id))
-                            user = c.fetchone()
-                            if user:
-                                print(f"❌ User exists but is_admin={user[1]}")
-                            else:
-                                print(f"❌ User not found for company {company_id}")
-                                c.execute("SELECT username, is_admin FROM users WHERE company_id=?", (company_id,))
-                                users = c.fetchall()
-                                for u in users:
-                                    print(f"   - {u[0]} (is_admin={u[1]})")
+                        admin_user = (row[0], row[1], company_id)
+                    else:
+                        admin_user = None
 
                     conn.close()
 
@@ -1071,7 +1068,7 @@ def login():
                         session['user_id'] = admin_user[0]
                         session['username'] = admin_user[1]
                         print(f"✅ Login successful for {username}")
-                        return redirect(f'/dashboard?company={company}')
+                        return redirect('/dashboard')
                     else:
                         error = "❌ Wrong credentials or not an admin user"
                         break
@@ -1112,11 +1109,10 @@ def dashboard():
         return redirect(f'/login?company={company}')
 
     # Ensure the user has access to the requested company
-    company = request.args.get('company', 'default')
-    if session.get('company_name') != company:
-        return redirect(f'/login?company={company}')
+    if not session.get('company_name'):
+        return redirect('/login')
 
-    return render_template("dashboard.html")
+    return render_template("dashboard.html", company=session.get('company_name', 'default'))
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -1508,8 +1504,9 @@ def add_user():
     c = conn.cursor()
 
     try:
+        hashed_password = hash_password(password)
         c.execute("INSERT INTO users (username, password, company_id, is_admin) VALUES (?, ?, ?, ?)",
-                  (username, password, company_id, 1))
+                  (username, hashed_password, company_id, 1))
         conn.commit()
         user_id = c.lastrowid
         conn.close()
@@ -1577,11 +1574,12 @@ def change_password():
             conn.close()
             return jsonify({"success": False, "message": "❌ Admin user not found."}), 404
 
-        if row[0] != current_password:
+        if not verify_password(row[0], current_password):
             conn.close()
             return jsonify({"success": False, "message": "❌ Current password is incorrect."}), 401
 
-        c.execute("UPDATE users SET password=? WHERE id=?", (new_password, user_id))
+        hashed_password = hash_password(new_password)
+        c.execute("UPDATE users SET password=? WHERE id=?", (hashed_password, user_id))
         conn.commit()
         conn.close()
 
@@ -1593,8 +1591,7 @@ def change_password():
 @app.route('/logout')
 def logout():
     session.clear()
-    company = request.args.get('company', 'default')
-    return redirect(f'/login?company={company}')
+    return redirect('/login')
 
 # ================== RUN ==================
 

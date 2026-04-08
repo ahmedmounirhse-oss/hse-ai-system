@@ -153,7 +153,7 @@
         <form id="registerForm" method="POST" action="/register" onsubmit="return handleSubmit(event)">
             <input type="hidden" name="company" value="{{ company }}">
 
-            <input name="company_name" type="text" placeholder="🏢 Company Name" required><br><br>
+            <input name="company_name" type="text" placeholder="🏢 Company Name" value="{{ company }}" required><br><br>
 
             <input name="username" type="text" placeholder="Choose Username" required><br><br>
 
