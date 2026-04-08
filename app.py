@@ -1106,7 +1106,7 @@ def companies():
 def dashboard():
     if not session.get('admin'):
         company = request.args.get('company', 'default')
-        return redirect(f'/login?company={company}')
+    return render_template("dashboard.html", company=g.company_name)
 
     # Ensure the user has access to the requested company
     if not session.get('company_name'):
